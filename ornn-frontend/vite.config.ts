@@ -21,11 +21,7 @@ export default defineConfig({
         target: "http://localhost:3801",
         changeOrigin: true,
       },
-      "/api/admin": {
-        target: "http://localhost:3801",
-        changeOrigin: true,
-      },
-      "/api/skills": {
+      "/api/web": {
         target: "http://localhost:3802",
         changeOrigin: true,
         configure: (proxy) => {
@@ -39,16 +35,8 @@ export default defineConfig({
           });
         },
       },
-      "/api/skill-search": {
+      "/api/agent": {
         target: "http://localhost:3802",
-        changeOrigin: true,
-      },
-      "/api/skill-format": {
-        target: "http://localhost:3802",
-        changeOrigin: true,
-      },
-      "/api/playground": {
-        target: "http://localhost:3803",
         changeOrigin: true,
         configure: (proxy) => {
           proxy.on("proxyRes", (proxyRes, _req, res) => {

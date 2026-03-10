@@ -3,6 +3,8 @@ export interface SkillSummary {
   name: string;
   description: string;
   createdBy: string;
+  createdByEmail?: string;
+  createdByDisplayName?: string;
   createdOn: string;
   isPrivate: boolean;
   tags: string[];

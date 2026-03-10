@@ -7,6 +7,7 @@
 
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { PageTransition } from "@/components/layout/PageTransition";
@@ -15,6 +16,7 @@ import { useAuthStore } from "@/stores/authStore";
 const NYXID_SETTINGS_URL = import.meta.env.VITE_NYXID_SETTINGS_URL ?? "";
 
 export function SettingsPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { isAuthenticated, user, logout } = useAuthStore();
 
@@ -41,14 +43,14 @@ export function SettingsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-heading text-2xl font-bold text-neon-cyan neon-cyan">
-              Settings
+              {t("settings.title")}
             </h1>
             <p className="mt-1 font-body text-text-muted">
-              Manage your account
+              {t("settings.subtitle")}
             </p>
           </div>
           <Button variant="danger" onClick={handleLogout}>
-            Sign Out
+            {t("settings.signOut")}
           </Button>
         </div>
 
@@ -110,10 +112,10 @@ export function SettingsPage() {
             className="glass rounded-xl border border-neon-cyan/20 p-6"
           >
             <h3 className="font-heading text-sm uppercase tracking-wider text-text-primary mb-3">
-              Account Management
+              {t("settings.accountMgmt")}
             </h3>
             <p className="font-body text-sm text-text-muted mb-4">
-              Your profile, LLM credentials, and security settings are managed through NyxID.
+              {t("settings.accountDesc")}
             </p>
             <a
               href={NYXID_SETTINGS_URL}
@@ -121,7 +123,7 @@ export function SettingsPage() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-lg border border-neon-cyan/50 px-4 py-2 font-body text-sm font-semibold text-neon-cyan transition-all duration-200 hover:border-neon-cyan hover:shadow-[0_0_15px_rgba(255,107,0,0.3)]"
             >
-              Open NyxID Settings
+              {t("settings.openNyxID")}
               <ExternalLinkIcon className="h-4 w-4" />
             </a>
           </motion.div>

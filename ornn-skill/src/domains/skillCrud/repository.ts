@@ -20,6 +20,8 @@ export interface CreateSkillData {
   skillHash: string;
   storageKey: string;
   createdBy: string;
+  createdByEmail?: string;
+  createdByDisplayName?: string;
   isPrivate?: boolean;
 }
 
@@ -72,6 +74,8 @@ export class SkillRepository {
       skillHash: data.skillHash,
       storageKey: data.storageKey,
       createdBy: data.createdBy,
+      createdByEmail: data.createdByEmail ?? null,
+      createdByDisplayName: data.createdByDisplayName ?? null,
       createdOn: now,
       updatedBy: data.createdBy,
       updatedOn: now,
@@ -156,8 +160,8 @@ export class SkillRepository {
   }
 
   /**
-   * Load ALL skills matching scope (no pagination). Used by LLM smart search.
-   * Only returns guid, name, description, metadata, isPrivate, createdBy for efficiency.
+   * Load ALL skills matching scope (no pagination). Used by LLM semantic search.
+   * Projects fields needed for semantic evaluation: name, description, metadata, license, compatibility, etc.
    */
   async findAllByScope(
     scope: "public" | "private" | "mixed",
@@ -168,7 +172,7 @@ export class SkillRepository {
 
     const docs = await this.collection
       .find(matchStage)
-      .project({ _id: 1, name: 1, description: 1, metadata: 1, isPrivate: 1, createdBy: 1, createdOn: 1, updatedOn: 1, storageKey: 1, skillHash: 1, license: 1, compatibility: 1, updatedBy: 1 })
+      .project({ _id: 1, name: 1, description: 1, metadata: 1, isPrivate: 1, createdBy: 1, createdByEmail: 1, createdByDisplayName: 1, createdOn: 1, updatedOn: 1, storageKey: 1, skillHash: 1, license: 1, compatibility: 1, updatedBy: 1 })
       .sort({ createdOn: -1 })
       .toArray();
 
@@ -204,6 +208,8 @@ function mapDoc(doc: Document | null): SkillDocument | null {
     skillHash: doc.skillHash ?? "",
     storageKey: doc.storageKey ?? doc.s3Url ?? "",
     createdBy: doc.createdBy ?? "",
+    createdByEmail: doc.createdByEmail ?? undefined,
+    createdByDisplayName: doc.createdByDisplayName ?? undefined,
     createdOn: doc.createdOn ?? new Date(),
     updatedBy: doc.updatedBy ?? "",
     updatedOn: doc.updatedOn ?? new Date(),

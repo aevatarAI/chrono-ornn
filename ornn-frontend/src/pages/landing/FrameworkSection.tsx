@@ -6,24 +6,25 @@
  */
 
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 interface Feature {
-  title: string;
-  description: string;
+  titleKey: string;
+  descKey: string;
 }
 
 const FEATURES: Feature[] = [
   {
-    title: "Verifiable Execution",
-    description: "Every skill runs in an isolated, auditable sandbox.",
+    titleKey: "landing.feature1Title",
+    descKey: "landing.feature1Desc",
   },
   {
-    title: "Zero-Trust Registry",
-    description: "Cryptographic signatures ensure skill integrity.",
+    titleKey: "landing.feature2Title",
+    descKey: "landing.feature2Desc",
   },
   {
-    title: "Seamless SDK Integration",
-    description: "One line to discover. One line to execute.",
+    titleKey: "landing.feature3Title",
+    descKey: "landing.feature3Desc",
   },
 ];
 
@@ -43,6 +44,8 @@ const result = await ornn.execute(skills[0], {
 });`;
 
 export function FrameworkSection() {
+  const { t } = useTranslation();
+
   return (
     <section id="framework" className="px-4 py-20">
       <div className="max-w-[1280px] mx-auto">
@@ -60,22 +63,20 @@ export function FrameworkSection() {
                 <HammerIcon className="h-5 w-5 text-neon-cyan" />
               </div>
               <h2 className="font-heading text-2xl sm:text-3xl font-bold text-text-primary tracking-wide">
-                The Ornn Framework
+                {t("landing.frameworkTitle")}
               </h2>
             </div>
 
             {/* Description */}
             <p className="font-body text-text-muted leading-relaxed mb-8 max-w-lg">
-              Ornn isn't just a list; it's a protocol. A standardized way for AI
-              agents to discover, verify, and execute capabilities across any
-              environment.
+              {t("landing.frameworkDesc")}
             </p>
 
             {/* Feature checklist */}
             <ul className="space-y-5">
               {FEATURES.map((feature, i) => (
                 <motion.li
-                  key={feature.title}
+                  key={feature.titleKey}
                   initial={{ opacity: 0, x: -20 }}
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
@@ -85,10 +86,10 @@ export function FrameworkSection() {
                   <CheckCircle />
                   <div>
                     <p className="font-body text-base font-semibold text-text-primary">
-                      {feature.title}
+                      {t(feature.titleKey)}
                     </p>
                     <p className="font-body text-sm text-text-muted">
-                      {feature.description}
+                      {t(feature.descKey)}
                     </p>
                   </div>
                 </motion.li>

@@ -24,6 +24,7 @@ export interface NyxIDTokenResponse {
   token_type: string;
   expires_in: number;
   scope: string;
+  id_token?: string;
 }
 
 /**
@@ -60,11 +61,23 @@ export interface NyxIDJwtClaims {
   scope: string;
   roles: string[];
   permissions: string[];
-  email?: string;
-  name?: string;
-  picture?: string;
   exp: number;
   iat: number;
   iss: string;
   aud: string;
+}
+
+/**
+ * OIDC ID token claims from NyxID (includes user profile info).
+ */
+export interface NyxIDIdTokenClaims {
+  sub: string;
+  iss: string;
+  aud: string;
+  exp: number;
+  iat: number;
+  email?: string;
+  email_verified?: boolean;
+  name?: string;
+  picture?: string;
 }

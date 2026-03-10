@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
+import { createPortal } from "react-dom";
 import type { ReactNode } from "react";
 
 export interface ModalProps {
@@ -10,7 +11,7 @@ export interface ModalProps {
 }
 
 export function Modal({ isOpen, onClose, title, children, className = "" }: ModalProps) {
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -41,6 +42,7 @@ export function Modal({ isOpen, onClose, title, children, className = "" }: Moda
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

@@ -5,6 +5,7 @@
  */
 
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { Card } from "@/components/ui/Card";
@@ -53,15 +54,15 @@ function SparkleIcon({ className }: { className?: string }) {
 }
 
 interface ModeCardConfig {
-  title: string;
-  description: string;
+  titleKey: string;
+  descKey: string;
   icon: React.ComponentType<{ className?: string }>;
   accentColor: string;
   accentBg: string;
   accentBorder: string;
   accentGlow: string;
-  bullets: string[];
-  cta: string;
+  bulletsKey: string;
+  ctaKey: string;
   route: string;
   variant: "primary" | "secondary";
   delay: number;
@@ -69,61 +70,43 @@ interface ModeCardConfig {
 
 const MODE_CARDS: ModeCardConfig[] = [
   {
-    title: "Guided Mode",
-    description:
-      "Step-by-step wizard that guides you through creating a skill. Perfect for beginners or structured authoring.",
+    titleKey: "upload.guidedTitle",
+    descKey: "upload.guidedDesc",
     icon: WizardIcon,
     accentColor: "text-neon-cyan",
     accentBg: "bg-neon-cyan/10",
     accentBorder: "border-neon-cyan/30",
     accentGlow: "group-hover:shadow-[0_0_20px_rgba(255,107,0,0.3)]",
-    bullets: [
-      "Step-by-step form",
-      "Markdown editor with preview",
-      "Folder-based file uploads",
-      "Full package preview",
-    ],
-    cta: "Start Guided Mode",
+    bulletsKey: "upload.guidedBullets",
+    ctaKey: "upload.startGuided",
     route: "/skills/new/guided",
     variant: "primary",
     delay: 0.1,
   },
   {
-    title: "Free Mode",
-    description:
-      "Upload a pre-built skill package as a ZIP file. Best for experienced authors with existing skills.",
+    titleKey: "upload.freeTitle",
+    descKey: "upload.freeDesc",
     icon: UploadIcon,
     accentColor: "text-neon-magenta",
     accentBg: "bg-neon-magenta/10",
     accentBorder: "border-neon-magenta/30",
     accentGlow: "group-hover:shadow-[0_0_20px_rgba(255,140,56,0.3)]",
-    bullets: [
-      "ZIP file upload",
-      "Structure validation",
-      "Auto-metadata extraction",
-      "Preview before upload",
-    ],
-    cta: "Start Free Mode",
+    bulletsKey: "upload.freeBullets",
+    ctaKey: "upload.startFree",
     route: "/skills/new/free",
     variant: "secondary",
     delay: 0.2,
   },
   {
-    title: "Generative Mode",
-    description:
-      "Describe what you need and let AI generate a complete skill for you. Refine with chat.",
+    titleKey: "upload.genTitle",
+    descKey: "upload.genDesc",
     icon: SparkleIcon,
     accentColor: "text-neon-yellow",
     accentBg: "bg-neon-yellow/10",
     accentBorder: "border-neon-yellow/30",
     accentGlow: "group-hover:shadow-[0_0_20px_rgba(255,184,0,0.3)]",
-    bullets: [
-      "AI-powered generation",
-      "Real-time streaming",
-      "Chat refinement",
-      "Auto-structured output",
-    ],
-    cta: "Start Generative Mode",
+    bulletsKey: "upload.genBullets",
+    ctaKey: "upload.startGen",
     route: "/skills/new/generate",
     variant: "primary",
     delay: 0.3,
@@ -132,27 +115,22 @@ const MODE_CARDS: ModeCardConfig[] = [
 
 export function UploadSkillPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <PageTransition>
-      <div className="h-full overflow-y-auto py-4">
-      <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-10">
-          <h1 className="neon-cyan mb-4 font-heading text-3xl font-bold tracking-wider text-neon-cyan sm:text-4xl">
-            CREATE SKILL
-          </h1>
-          <p className="font-body text-lg text-text-muted max-w-2xl mx-auto">
-            Choose how you want to create your skill. Use the guided wizard,
-            upload a ZIP package, or let AI generate one for you.
-          </p>
-        </div>
+      <div className="flex flex-col h-full py-2">
+      <div className="max-w-5xl mx-auto flex-1 flex flex-col justify-center">
+        <p className="font-body text-base text-text-muted text-center mb-6">
+          {t("upload.chooseMode")}
+        </p>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {MODE_CARDS.map((card) => {
             const Icon = card.icon;
             return (
               <motion.div
-                key={card.title}
+                key={card.titleKey}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: card.delay }}
@@ -172,15 +150,15 @@ export function UploadSkillPage() {
                     <h2
                       className={`font-heading text-xl ${card.accentColor} mb-3`}
                     >
-                      {card.title}
+                      {t(card.titleKey)}
                     </h2>
 
                     <p className="font-body text-text-muted mb-6">
-                      {card.description}
+                      {t(card.descKey)}
                     </p>
 
                     <ul className="text-left space-y-2 mb-6 w-full">
-                      {card.bullets.map((bullet) => (
+                      {(t(card.bulletsKey, { returnObjects: true }) as string[]).map((bullet) => (
                         <li
                           key={bullet}
                           className="flex items-center gap-2 text-sm text-text-muted"
@@ -194,7 +172,7 @@ export function UploadSkillPage() {
                     </ul>
 
                     <Button variant={card.variant} className="w-full">
-                      {card.cta}
+                      {t(card.ctaKey)}
                     </Button>
                   </div>
                 </Card>

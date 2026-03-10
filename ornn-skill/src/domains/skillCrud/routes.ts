@@ -10,10 +10,12 @@
 import { Hono } from "hono";
 import type { SkillService } from "./service";
 import type { SkillRepository } from "./repository";
+import type { ActivityRepository } from "../admin/activityRepository";
 import {
   type AuthVariables,
   type NyxIDAuthConfig,
   nyxidAuthMiddleware,
+  optionalAuthMiddleware,
   requirePermission,
   requireOwnerOrAdmin,
   getAuth,
@@ -28,17 +30,15 @@ export interface SkillRoutesConfig {
   skillRepo: SkillRepository;
   authConfig: NyxIDAuthConfig;
   maxFileSize: number;
+  activityRepo?: ActivityRepository;
 }
 
 export function createSkillRoutes(config: SkillRoutesConfig): Hono<{ Variables: AuthVariables }> {
-  const { skillService, skillRepo, authConfig, maxFileSize } = config;
+  const { skillService, skillRepo, authConfig, maxFileSize, activityRepo } = config;
   const app = new Hono<{ Variables: AuthVariables }>();
 
   const auth = nyxidAuthMiddleware(authConfig);
-
-  // All skill CRUD routes require authentication
-  app.use("/skills/*", auth);
-  app.use("/skills", auth);
+  const optionalAuth = optionalAuthMiddleware(authConfig);
 
   /**
    * POST /skills — Create a new skill from a ZIP package.
@@ -46,6 +46,7 @@ export function createSkillRoutes(config: SkillRoutesConfig): Hono<{ Variables: 
    */
   app.post(
     "/skills",
+    auth,
     requirePermission("ornn:skill:create"),
     async (c) => {
       const authCtx = getAuth(c);
@@ -66,10 +67,22 @@ export function createSkillRoutes(config: SkillRoutesConfig): Hono<{ Variables: 
       }
 
       const zipBuffer = new Uint8Array(body);
-      const result = await skillService.createSkill(zipBuffer, authCtx.userId, { skipValidation });
-      logger.info({ guid: result.guid, userId: authCtx.userId }, "Skill created via API");
+      const userEmail = c.req.header("X-User-Email") ?? undefined;
+      const userDisplayName = c.req.header("X-User-Display-Name") ?? undefined;
+      const result = await skillService.createSkill(zipBuffer, authCtx.userId, {
+        skipValidation,
+        userEmail,
+        userDisplayName,
+      });
+      logger.info({ guid: result.guid, userId: authCtx.userId, userEmail }, "Skill created via API");
 
+      // Log activity
       const skill = await skillService.getSkill(result.guid);
+      activityRepo?.log(authCtx.userId, userEmail ?? "", userDisplayName ?? "", "skill:create", {
+        skillId: result.guid,
+        skillName: skill.name,
+      }).catch((err) => logger.warn({ err }, "Failed to log skill:create activity"));
+
       return c.json({ data: skill, error: null });
     },
   );
@@ -80,6 +93,7 @@ export function createSkillRoutes(config: SkillRoutesConfig): Hono<{ Variables: 
    */
   app.get(
     "/skills/:idOrName/json",
+    auth,
     requirePermission("ornn:skill:read"),
     async (c) => {
       const idOrName = c.req.param("idOrName");
@@ -91,14 +105,26 @@ export function createSkillRoutes(config: SkillRoutesConfig): Hono<{ Variables: 
 
   /**
    * GET /skills/:idOrName — Read a skill by GUID or name.
-   * Requires: ornn:skill:read
+   * Auth: Optional. Anonymous users can only view public skills.
    */
   app.get(
     "/skills/:idOrName",
-    requirePermission("ornn:skill:read"),
+    optionalAuth,
     async (c) => {
       const idOrName = c.req.param("idOrName");
+      const authCtx = c.get("auth");
       const skill = await skillService.getSkill(idOrName);
+
+      // Anonymous users can only see public skills
+      if (!authCtx && skill.isPrivate) {
+        throw AppError.notFound("SKILL_NOT_FOUND", `Skill '${idOrName}' not found`);
+      }
+
+      // Authenticated non-owner can't see private skills (unless admin)
+      if (authCtx && skill.isPrivate && skill.createdBy !== authCtx.userId && !authCtx.permissions.includes("ornn:admin:skill")) {
+        throw AppError.notFound("SKILL_NOT_FOUND", `Skill '${idOrName}' not found`);
+      }
+
       return c.json({ data: skill, error: null });
     },
   );
@@ -110,6 +136,7 @@ export function createSkillRoutes(config: SkillRoutesConfig): Hono<{ Variables: 
    */
   app.put(
     "/skills/:id",
+    auth,
     requirePermission("ornn:skill:update"),
     requireOwnerOrAdmin(async (c) => {
       const guid = c.req.param("id");
@@ -158,7 +185,17 @@ export function createSkillRoutes(config: SkillRoutesConfig): Hono<{ Variables: 
       }
 
       logger.info({ guid, userId: authCtx.userId }, "Skill update via API");
+      const userEmail = c.req.header("X-User-Email") ?? "";
+      const userDN = c.req.header("X-User-Display-Name") ?? "";
       const result = await skillService.updateSkill(guid, authCtx.userId, { zipBuffer, isPrivate, skipValidation });
+
+      const action = isPrivate !== undefined && zipBuffer === undefined ? "skill:visibility_change" : "skill:update";
+      activityRepo?.log(authCtx.userId, userEmail, userDN, action, {
+        skillId: guid,
+        skillName: result.name,
+        ...(isPrivate !== undefined ? { isPrivate } : {}),
+      }).catch((err) => logger.warn({ err }, `Failed to log ${action} activity`));
+
       return c.json({ data: result, error: null });
     },
   );
@@ -169,6 +206,7 @@ export function createSkillRoutes(config: SkillRoutesConfig): Hono<{ Variables: 
    */
   app.delete(
     "/skills/:id",
+    auth,
     requirePermission("ornn:skill:delete"),
     requireOwnerOrAdmin(async (c) => {
       const guid = c.req.param("id");
@@ -177,8 +215,18 @@ export function createSkillRoutes(config: SkillRoutesConfig): Hono<{ Variables: 
     }),
     async (c) => {
       const guid = c.req.param("id");
+      const authCtx = getAuth(c);
+      const skill = await skillRepo.findByGuid(guid);
       logger.info({ guid }, "Skill delete via API");
       await skillService.deleteSkill(guid);
+
+      const userEmail = c.req.header("X-User-Email") ?? "";
+      const userDN = c.req.header("X-User-Display-Name") ?? "";
+      activityRepo?.log(authCtx.userId, userEmail, userDN, "skill:delete", {
+        skillId: guid,
+        skillName: skill?.name ?? guid,
+      }).catch((err) => logger.warn({ err }, "Failed to log skill:delete activity"));
+
       return c.json({ data: { success: true }, error: null });
     },
   );

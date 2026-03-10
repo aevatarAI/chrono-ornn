@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { SearchBar } from "@/components/search/SearchBar";
 import { SkillGrid } from "@/components/skill/SkillGrid";
@@ -29,16 +30,19 @@ const DEFAULT_PAGE_SIZE = 20;
 
 export function ExplorePage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isAuthenticated = useIsAuthenticated();
   const user = useCurrentUser();
-  const [activeTab, setActiveTab] = useState<ExploreTab>("public");
+  const activeTab = (isAuthenticated && searchParams.get("tab") === "my-skills" ? "my-skills" : "public") as ExploreTab;
   const [mySkillsPage, setMySkillsPage] = useState(1);
 
-  const { query, page, setPage } = useSearchStore();
+  const { query, mode, page, setPage } = useSearchStore();
 
   // Fetch public skills
   const { data: publicData, isLoading: publicLoading } = useSkills({
     query: query || undefined,
+    mode,
     page,
     pageSize: DEFAULT_PAGE_SIZE,
   });
@@ -46,6 +50,7 @@ export function ExplorePage() {
   // Fetch my skills (only when authenticated and on my-skills tab)
   const { data: mySkillsData, isLoading: mySkillsLoading } = useMySkills({
     query: query || undefined,
+    mode,
     page: mySkillsPage,
     pageSize: DEFAULT_PAGE_SIZE,
   });
@@ -65,31 +70,19 @@ export function ExplorePage() {
   };
 
   const handleTabChange = (tab: ExploreTab) => {
-    setActiveTab(tab);
+    if (tab === "public") {
+      setSearchParams({});
+    } else {
+      setSearchParams({ tab: "my-skills" });
+    }
   };
 
   return (
     <PageTransition>
-      <div className="h-full overflow-y-auto py-4">
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="neon-cyan mb-2 font-heading text-3xl font-bold tracking-wider text-neon-cyan sm:text-4xl">
-            EXPLORE SKILLS
-          </h1>
-          <p className="font-body text-text-muted">
-            Discover, download, and share reusable skills for agentic AI systems
-          </p>
-        </div>
-        {isAuthenticated && (
-          <Button onClick={() => navigate("/skills/new")}>
-            Create Skill
-          </Button>
-        )}
-      </div>
-
+      <div className="flex flex-col h-full py-2">
       {/* Tab selector (only show when authenticated) */}
       {isAuthenticated && (
-        <div className="mb-6 flex justify-center">
+        <div className="mb-3 flex justify-center shrink-0">
           <div className="inline-flex rounded-lg border border-neon-cyan/20 bg-bg-elevated p-1">
             <button
               onClick={() => handleTabChange("public")}
@@ -101,7 +94,7 @@ export function ExplorePage() {
                 }
               `}
             >
-              Public Skills
+              {t("explore.publicSkills")}
             </button>
             <button
               onClick={() => handleTabChange("my-skills")}
@@ -113,57 +106,59 @@ export function ExplorePage() {
                 }
               `}
             >
-              My Skills
+              {t("explore.mySkills")}
             </button>
           </div>
         </div>
       )}
 
-      <SearchBar className="mb-6" />
+      <SearchBar className="mb-3 shrink-0" />
 
-      {/* Skills grid */}
-      {isLoading ? (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-8">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <SkeletonCard key={i} />
-          ))}
-        </div>
-      ) : data?.items.length === 0 ? (
-        <EmptyState
-          title={isPublicTab ? "No skills found" : "No skills yet"}
-          description={
-            isPublicTab
-              ? "Try adjusting your search, or upload the first skill."
-              : "Create your first skill to get started"
-          }
-          action={
-            <Button onClick={() => navigate("/skills/new")}>
-              {isPublicTab ? "Upload Skill" : "Create Skill"}
-            </Button>
-          }
-        />
-      ) : isPublicTab ? (
-        <SkillGrid skills={data?.items ?? []} isLoading={isLoading} className="mb-8" />
-      ) : (
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-8"
-        >
-          {data?.items.map((skill) => (
-            <motion.div key={skill.guid} variants={itemVariants}>
-              <SkillCard
-                skill={skill}
-                showOwnerControls
-                currentUserId={user?.id}
-              />
-            </motion.div>
-          ))}
-        </motion.div>
-      )}
+      {/* Scrollable skills grid — padding prevents hover scale/glow clipping */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-2 py-1 -mx-2 -my-1">
+        {isLoading ? (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 pb-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+        ) : data?.items.length === 0 ? (
+          <EmptyState
+            title={isPublicTab ? t("explore.noSkillsFound") : t("explore.noSkillsYet")}
+            description={
+              isPublicTab
+                ? t("explore.tryAdjusting")
+                : t("explore.createFirst")
+            }
+            action={isAuthenticated ? (
+              <Button onClick={() => navigate("/skills/new")}>
+                {isPublicTab ? t("explore.uploadSkill") : t("explore.createSkill")}
+              </Button>
+            ) : undefined}
+          />
+        ) : isPublicTab ? (
+          <SkillGrid skills={data?.items ?? []} isLoading={isLoading} className="pb-4" />
+        ) : (
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 pb-4"
+          >
+            {data?.items.map((skill) => (
+              <motion.div key={skill.guid} variants={itemVariants}>
+                <SkillCard
+                  skill={skill}
+                  showOwnerControls
+                  currentUserId={user?.id}
+                />
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
 
-      <Pagination page={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
+        <Pagination page={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
+      </div>
       </div>
     </PageTransition>
   );

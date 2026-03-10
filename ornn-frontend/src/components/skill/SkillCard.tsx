@@ -3,7 +3,6 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import type { BadgeProps } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { SkillPublicToggle } from "./SkillPublicToggle";
 import type { SkillSearchResult } from "@/types/search";
 
 const TAG_COLORS: NonNullable<BadgeProps["color"]>[] = ["cyan", "magenta", "yellow", "green"];
@@ -73,7 +72,7 @@ export function SkillCard({
     onDelete?.(skill);
   };
 
-  const displayName = ownerDisplayName || skill.createdBy;
+  const displayName = ownerDisplayName || skill.createdByDisplayName || skill.createdByEmail || skill.createdBy;
   const timestamp = skill.updatedOn || skill.createdOn;
 
   return (
@@ -135,17 +134,7 @@ export function SkillCard({
       {/* Owner controls */}
       {showOwnerControls && isOwner && (
         <div className="mt-4 pt-4 border-t border-neon-cyan/10">
-          <div className="flex items-center justify-between">
-            {/* Toggle public/private */}
-            <div onClick={(e) => e.stopPropagation()}>
-              <SkillPublicToggle
-                skillId={skill.guid}
-                isPrivate={skill.isPrivate}
-                size="sm"
-              />
-            </div>
-
-            {/* Action buttons */}
+          <div className="flex items-center justify-end gap-2">
             <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
               {onEdit && (
                 <Button

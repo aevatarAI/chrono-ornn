@@ -2,12 +2,12 @@ import { create } from "zustand";
 
 interface SearchState {
   query: string;
-  mode: "keyword" | "similarity";
+  mode: "keyword" | "semantic";
   scope: "public" | "private" | "mixed";
   page: number;
   pageSize: number;
   setQuery: (q: string) => void;
-  setMode: (m: "keyword" | "similarity") => void;
+  setMode: (m: "keyword" | "semantic") => void;
   setScope: (s: "public" | "private" | "mixed") => void;
   setPage: (p: number) => void;
   setPageSize: (ps: number) => void;

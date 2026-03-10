@@ -5,7 +5,7 @@
  * @module components/skill/SkillPackagePreview
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { FileTree, type FileNode } from "@/components/editor/FileTree";
 import { SkillFileViewer } from "@/components/skill/SkillFileViewer";
 import { Badge } from "@/components/ui/Badge";
@@ -90,6 +90,70 @@ function findFirstFile(nodes: FileNode[]): string | undefined {
   return undefined;
 }
 
+/** Horizontally resizable two-pane layout with a draggable divider */
+function ResizablePanes({
+  children,
+  className = "",
+  style,
+}: {
+  children: [React.ReactNode, React.ReactNode];
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [leftWidth, setLeftWidth] = useState(30); // percentage
+  const isDragging = useRef(false);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDragging.current = true;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, []);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging.current || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const pct = ((e.clientX - rect.left) / rect.width) * 100;
+      setLeftWidth(Math.min(Math.max(pct, 15), 60));
+    };
+
+    const handleMouseUp = () => {
+      if (isDragging.current) {
+        isDragging.current = false;
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      }
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, []);
+
+  return (
+    <div ref={containerRef} className={`flex flex-row ${className}`} style={style}>
+      <div style={{ width: `${leftWidth}%` }} className="shrink-0 h-full">
+        {children[0]}
+      </div>
+      {/* Draggable divider */}
+      <div
+        onMouseDown={handleMouseDown}
+        className="shrink-0 w-2 cursor-col-resize flex items-center justify-center group"
+      >
+        <div className="w-0.5 h-8 rounded-full bg-neon-cyan/20 group-hover:bg-neon-cyan/50 transition-colors" />
+      </div>
+      <div style={{ width: `${100 - leftWidth}%` }} className="min-w-0 h-full">
+        {children[1]}
+      </div>
+    </div>
+  );
+}
+
 export function SkillPackagePreview({
   files,
   fileContents,
@@ -126,7 +190,7 @@ export function SkillPackagePreview({
   };
 
   return (
-    <div className={className}>
+    <div className={`flex flex-col ${className}`}>
       {/* Metadata summary bar */}
       {metadata && (
         <div className="glass rounded-lg border border-neon-cyan/10 p-4 mb-4">
@@ -156,10 +220,10 @@ export function SkillPackagePreview({
         </div>
       )}
 
-      {/* Two-column layout — fixed height so it never shifts */}
-      <div className="flex flex-col lg:flex-row gap-4 h-[500px]">
+      {/* Two-column layout with draggable divider */}
+      <ResizablePanes className="flex-1 min-h-0" style={{ minHeight: "300px" }}>
         {/* Left: File tree */}
-        <div className="lg:w-1/3 shrink-0 rounded-lg border border-neon-cyan/10 bg-bg-surface overflow-hidden flex flex-col h-full">
+        <div className="rounded-lg border border-neon-cyan/10 bg-bg-surface overflow-hidden flex flex-col h-full">
           <FileTree
             files={files}
             selectedId={selectedFileId}
@@ -171,7 +235,7 @@ export function SkillPackagePreview({
         </div>
 
         {/* Right: File content viewer */}
-        <div className="lg:w-2/3 min-w-0 h-full">
+        <div className="min-w-0 h-full">
           {selectedFileId ? (
             <SkillFileViewer
               filename={selectedFilename}
@@ -193,7 +257,7 @@ export function SkillPackagePreview({
             </div>
           )}
         </div>
-      </div>
+      </ResizablePanes>
     </div>
   );
 }

@@ -7,8 +7,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { PageTransition } from "@/components/layout/PageTransition";
-import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Pagination } from "@/components/ui/Pagination";
@@ -36,6 +36,7 @@ const itemVariants = {
 
 export function MySkillsPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const user = useCurrentUser();
   const addToast = useToastStore((s) => s.addToast);
 
@@ -63,9 +64,9 @@ export function MySkillsPage() {
     if (!skillToDelete) return;
     try {
       await deleteMutation.mutateAsync(skillToDelete.guid);
-      addToast({ type: "success", message: "Skill deleted successfully" });
+      addToast({ type: "success", message: t("mySkills.deleteSuccess") });
     } catch {
-      addToast({ type: "error", message: "Failed to delete skill" });
+      addToast({ type: "error", message: t("mySkills.deleteFailed") });
     } finally {
       setSkillToDelete(null);
     }
@@ -73,118 +74,96 @@ export function MySkillsPage() {
 
   return (
     <PageTransition>
-      <div className="h-full overflow-y-auto py-4">
-      {/* Header */}
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="neon-cyan mb-2 font-heading text-3xl font-bold tracking-wider text-neon-cyan sm:text-4xl">
-            MY SKILLS
-          </h1>
-          <p className="font-body text-text-muted">
-            Manage your skills collection - create, edit, and share
-          </p>
-        </div>
-        <Button onClick={() => navigate("/skills/new")}>
-          Create Skill
-        </Button>
+      <div className="flex flex-col h-full py-2">
+      {/* Search bar */}
+      <div className="mb-3 shrink-0">
+        <Input
+          placeholder={t("mySkills.searchPlaceholder")}
+          value={searchInput}
+          onChange={(e) => {
+            setSearchInput(e.target.value);
+            setPage(1);
+          }}
+          className="w-full"
+        />
       </div>
-
-      {/* Search */}
-      <Card className="mb-6">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <Input
-              placeholder="Search your skills..."
-              value={searchInput}
-              onChange={(e) => {
-                setSearchInput(e.target.value);
-                setPage(1);
-              }}
-              className="w-full"
-            />
-          </div>
-        </div>
-      </Card>
 
       {/* Skills count */}
       {data && !isLoading && (
-        <div className="mb-4 flex items-center justify-between">
-          <p className="font-body text-sm text-text-muted">
-            {data.total} {data.total === 1 ? "skill" : "skills"} found
+        <div className="mb-2 shrink-0">
+          <p className="font-body text-xs text-text-muted">
+            {t("mySkills.skillsFound", { count: data.total, unit: data.total === 1 ? t("common.skill") : t("common.skills") })}
           </p>
         </div>
       )}
 
-      {/* Skills grid */}
-      {isLoading ? (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <SkeletonCard key={i} />
-          ))}
-        </div>
-      ) : data?.items.length === 0 ? (
-        <EmptyState
-          title={debouncedSearch ? "No matching skills" : "No skills yet"}
-          description={
-            debouncedSearch
-              ? "Try adjusting your search"
-              : "Create your first skill to get started"
-          }
-          action={
-            !debouncedSearch ? (
-              <Button onClick={() => navigate("/skills/new")}>Create Skill</Button>
-            ) : (
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setSearchInput("");
-                }}
-              >
-                Clear Search
-              </Button>
-            )
-          }
-        />
-      ) : (
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
-        >
-          {data?.items.map((skill) => (
-            <motion.div key={skill.guid} variants={itemVariants}>
-              <SkillCard
-                skill={skill}
-                showOwnerControls
-                currentUserId={user?.id}
-                ownerDisplayName={user?.displayName}
-                ownerAvatarUrl={user?.avatarUrl}
-                onDelete={handleDeleteClick}
-              />
-            </motion.div>
-          ))}
-        </motion.div>
-      )}
+      {/* Scrollable skills grid */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-2 py-1 -mx-2 -my-1">
+        {isLoading ? (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 pb-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+        ) : data?.items.length === 0 ? (
+          <EmptyState
+            title={debouncedSearch ? t("mySkills.noMatching") : t("mySkills.noSkillsYet")}
+            description={
+              debouncedSearch
+                ? t("mySkills.tryAdjusting")
+                : t("mySkills.createFirst")
+            }
+            action={
+              !debouncedSearch ? (
+                <Button onClick={() => navigate("/skills/new")}>{t("explore.createSkill")}</Button>
+              ) : (
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setSearchInput("");
+                  }}
+                >
+                  {t("common.clearSearch")}
+                </Button>
+              )
+            }
+          />
+        ) : (
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 pb-4"
+          >
+            {data?.items.map((skill) => (
+              <motion.div key={skill.guid} variants={itemVariants}>
+                <SkillCard
+                  skill={skill}
+                  showOwnerControls
+                  currentUserId={user?.id}
+                  ownerDisplayName={user?.displayName}
+                  ownerAvatarUrl={user?.avatarUrl}
+                  onDelete={handleDeleteClick}
+                />
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="mt-8">
+        {totalPages > 1 && (
           <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Delete confirmation modal */}
       <Modal
         isOpen={!!skillToDelete}
         onClose={() => setSkillToDelete(null)}
-        title="Delete Skill?"
+        title={t("mySkills.deleteTitle")}
       >
         <div className="space-y-4">
           <p className="font-body text-text-primary">
-            Are you sure you want to delete{" "}
-            <span className="text-neon-cyan font-semibold">{skillToDelete?.name}</span>?
-            This action cannot be undone.
+            {t("mySkills.deleteConfirm", { name: skillToDelete?.name }).replace(/<\/?strong>/g, "")}
           </p>
 
           <div className="flex justify-end gap-3 pt-2">
@@ -193,7 +172,7 @@ export function MySkillsPage() {
               size="sm"
               onClick={() => setSkillToDelete(null)}
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button
               variant="danger"
@@ -201,7 +180,7 @@ export function MySkillsPage() {
               onClick={handleDeleteConfirm}
               loading={deleteMutation.isPending}
             >
-              Delete
+              {t("common.delete")}
             </Button>
           </div>
         </div>

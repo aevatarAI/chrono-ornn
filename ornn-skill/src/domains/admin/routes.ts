@@ -1,18 +1,22 @@
 /**
  * Admin routes with NyxID auth.
- * Category and Tag CRUD. Requires ornn:admin:category / ornn:admin:skill permissions.
- * User management removed (now in NyxID).
+ * Category/Tag CRUD, activity log, user dashboard, skill management.
+ * Requires ornn:admin:* permissions.
  * @module domains/admin/routes
  */
 
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AdminService } from "./service";
+import type { ActivityRepository, ActivityAction } from "./activityRepository";
+import type { SkillRepository } from "../skillCrud/repository";
+import type { SkillService } from "../skillCrud/service";
 import {
   type AuthVariables,
   type NyxIDAuthConfig,
   nyxidAuthMiddleware,
   requirePermission,
+  getAuth,
 } from "../../middleware/nyxidAuth";
 import { AppError } from "../../shared/types/index";
 import pino from "pino";
@@ -37,15 +41,198 @@ const createTagSchema = z.object({
 
 export interface AdminRoutesConfig {
   adminService: AdminService;
+  activityRepo: ActivityRepository;
+  skillRepo: SkillRepository;
+  skillService: SkillService;
   authConfig: NyxIDAuthConfig;
 }
 
 export function createAdminRoutes(config: AdminRoutesConfig): Hono<{ Variables: AuthVariables }> {
-  const { adminService, authConfig } = config;
+  const { adminService, activityRepo, skillRepo, skillService, authConfig } = config;
   const app = new Hono<{ Variables: AuthVariables }>();
 
   const auth = nyxidAuthMiddleware(authConfig);
+
+  // Activity logging endpoint — any authenticated user can log their own login
+  app.post("/activity/login", auth, async (c) => {
+    const authCtx = getAuth(c);
+    const email = c.req.header("X-User-Email") ?? "";
+    const displayName = c.req.header("X-User-Display-Name") ?? "";
+    await activityRepo.log(authCtx.userId, email, displayName, "login");
+    return c.json({ data: { success: true }, error: null });
+  });
+
+  app.post("/activity/logout", auth, async (c) => {
+    const authCtx = getAuth(c);
+    const email = c.req.header("X-User-Email") ?? "";
+    const displayName = c.req.header("X-User-Display-Name") ?? "";
+    await activityRepo.log(authCtx.userId, email, displayName, "logout");
+    return c.json({ data: { success: true }, error: null });
+  });
+
+  // All /admin/* routes require auth + admin permission
   app.use("/admin/*", auth);
+
+  // =========================================================================
+  // Dashboard Stats
+  // =========================================================================
+
+  app.get(
+    "/admin/stats",
+    requirePermission("ornn:admin:skill"),
+    async (c) => {
+      const skillCollection = skillRepo["collection"];
+      const stats = await activityRepo.getStats(skillCollection);
+      return c.json({ data: stats, error: null });
+    },
+  );
+
+  // =========================================================================
+  // Activity Log
+  // =========================================================================
+
+  app.get(
+    "/admin/activities",
+    requirePermission("ornn:admin:skill"),
+    async (c) => {
+      const page = Math.max(1, Number(c.req.query("page")) || 1);
+      const pageSize = Math.min(100, Math.max(1, Number(c.req.query("pageSize")) || 20));
+      const action = c.req.query("action") as ActivityAction | undefined;
+      const userId = c.req.query("userId") || undefined;
+
+      const result = await activityRepo.list({ page, pageSize, action, userId });
+      const totalPages = Math.ceil(result.total / pageSize);
+
+      return c.json({
+        data: {
+          items: result.items.map((a) => ({
+            id: a._id,
+            userId: a.userId,
+            userEmail: a.userEmail,
+            userDisplayName: a.userDisplayName,
+            action: a.action,
+            details: a.details,
+            createdAt: a.createdAt instanceof Date ? a.createdAt.toISOString() : String(a.createdAt),
+          })),
+          total: result.total,
+          page,
+          pageSize,
+          totalPages,
+        },
+        error: null,
+      });
+    },
+  );
+
+  // =========================================================================
+  // User Dashboard
+  // =========================================================================
+
+  app.get(
+    "/admin/users",
+    requirePermission("ornn:admin:skill"),
+    async (c) => {
+      const page = Math.max(1, Number(c.req.query("page")) || 1);
+      const pageSize = Math.min(100, Math.max(1, Number(c.req.query("pageSize")) || 20));
+
+      const skillCollection = skillRepo["collection"];
+      const result = await activityRepo.aggregateUsers(skillCollection, page, pageSize);
+      const totalPages = Math.ceil(result.total / pageSize);
+
+      return c.json({
+        data: {
+          items: result.items,
+          total: result.total,
+          page,
+          pageSize,
+          totalPages,
+        },
+        error: null,
+      });
+    },
+  );
+
+  // =========================================================================
+  // Admin Skill Management — browse ALL skills, CRUD any skill
+  // =========================================================================
+
+  app.get(
+    "/admin/skills",
+    requirePermission("ornn:admin:skill"),
+    async (c) => {
+      const page = Math.max(1, Number(c.req.query("page")) || 1);
+      const pageSize = Math.min(100, Math.max(1, Number(c.req.query("pageSize")) || 20));
+      const q = c.req.query("q") || "";
+      const userId = c.req.query("userId") || undefined;
+
+      // Admin can see all skills — no scope filtering
+      const filter: Record<string, unknown> = {};
+      if (userId) filter.createdBy = userId;
+
+      const skillCollection = skillRepo["collection"];
+
+      if (q) {
+        const regex = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        filter.$or = [
+          { name: { $regex: regex, $options: "i" } },
+          { description: { $regex: regex, $options: "i" } },
+        ];
+      }
+
+      const total = await skillCollection.countDocuments(filter);
+      const offset = (page - 1) * pageSize;
+      const docs = await skillCollection
+        .find(filter)
+        .sort({ createdOn: -1 })
+        .skip(offset)
+        .limit(pageSize)
+        .toArray();
+
+      const items = docs.map((d) => ({
+        guid: d._id as string,
+        name: d.name as string,
+        description: d.description as string,
+        createdBy: (d.createdBy as string) ?? "",
+        createdByEmail: (d.createdByEmail as string) ?? "",
+        createdByDisplayName: (d.createdByDisplayName as string) ?? "",
+        createdOn: d.createdOn instanceof Date ? d.createdOn.toISOString() : String(d.createdOn),
+        updatedOn: d.updatedOn instanceof Date ? d.updatedOn.toISOString() : String(d.updatedOn),
+        isPrivate: (d.isPrivate as boolean) ?? true,
+        tags: ((d.metadata as Record<string, unknown>)?.tags as string[]) ?? [],
+      }));
+
+      return c.json({
+        data: {
+          items,
+          total,
+          page,
+          pageSize,
+          totalPages: Math.ceil(total / pageSize),
+        },
+        error: null,
+      });
+    },
+  );
+
+  app.delete(
+    "/admin/skills/:id",
+    requirePermission("ornn:admin:skill"),
+    async (c) => {
+      const guid = c.req.param("id");
+      const authCtx = getAuth(c);
+      await skillService.deleteSkill(guid);
+
+      const email = c.req.header("X-User-Email") ?? "";
+      const displayName = c.req.header("X-User-Display-Name") ?? "";
+      await activityRepo.log(authCtx.userId, email, displayName, "skill:delete", {
+        skillId: guid,
+        adminAction: true,
+      });
+
+      logger.info({ guid, adminUserId: authCtx.userId }, "Skill deleted by admin");
+      return c.json({ data: { success: true }, error: null });
+    },
+  );
 
   // =========================================================================
   // Category Management (ornn:admin:category)

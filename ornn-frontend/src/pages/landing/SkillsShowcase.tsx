@@ -5,6 +5,7 @@
  */
 
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 interface ShowcaseSkill {
   icon: React.ReactNode;
@@ -47,6 +48,8 @@ const cardVariants = {
 };
 
 export function SkillsShowcase() {
+  const { t } = useTranslation();
+
   return (
     <section id="skills" className="px-4 py-20">
       <div className="max-w-[1280px] mx-auto">
@@ -59,10 +62,10 @@ export function SkillsShowcase() {
           className="mb-12 text-center"
         >
           <h2 className="font-heading text-2xl sm:text-3xl font-bold text-text-primary tracking-wide mb-3">
-            Popular Agent Skills
+            {t("landing.showcaseTitle")}
           </h2>
           <p className="font-body text-text-muted max-w-lg mx-auto">
-            Browse the most-used capabilities in the registry.
+            {t("landing.showcaseDesc")}
           </p>
         </motion.div>
 
@@ -100,7 +103,7 @@ export function SkillsShowcase() {
                   {skill.version}
                 </span>
                 <span className="font-body text-sm font-semibold text-neon-cyan transition-colors hover:underline cursor-pointer">
-                  View Docs
+                  {t("landing.viewDocs")}
                 </span>
               </div>
             </motion.div>

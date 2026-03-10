@@ -93,6 +93,12 @@ interface TreeNodeProps {
   onToggle: (id: string) => void;
   onCreateFile?: (parentId: string | null) => void;
   onDelete?: (id: string) => void;
+  /** Currently active creation state */
+  creatingState?: { type: "file" | "folder"; parentId: string | null } | null;
+  newItemName?: string;
+  onNewItemNameChange?: (name: string) => void;
+  onConfirmCreate?: () => void;
+  onCancelCreate?: () => void;
 }
 
 function TreeNode({
@@ -104,6 +110,11 @@ function TreeNode({
   onToggle,
   onCreateFile,
   onDelete,
+  creatingState,
+  newItemName,
+  onNewItemNameChange,
+  onConfirmCreate,
+  onCancelCreate,
 }: TreeNodeProps) {
   const isFolder = node.type === "folder";
   const isExpanded = expandedIds.has(node.id);
@@ -196,6 +207,24 @@ function TreeNode({
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.15 }}
           >
+            {/* Inline creation input inside this folder */}
+            {creatingState && creatingState.parentId === node.id && onNewItemNameChange && onConfirmCreate && onCancelCreate && (
+              <div className="py-1" style={{ paddingLeft: `${(level + 1) * 12 + 8}px`, paddingRight: "8px" }}>
+                <input
+                  type="text"
+                  value={newItemName ?? ""}
+                  onChange={(e) => onNewItemNameChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") onConfirmCreate();
+                    if (e.key === "Escape") onCancelCreate();
+                  }}
+                  onBlur={onCancelCreate}
+                  autoFocus
+                  placeholder={creatingState.type === "file" ? "filename.md" : "folder-name"}
+                  className="w-full px-2 py-1 rounded bg-bg-elevated border border-neon-cyan/30 font-mono text-sm text-text-primary placeholder:text-text-muted/50 focus:outline-none focus:border-neon-cyan"
+                />
+              </div>
+            )}
             {node.children.map((child) => (
               <TreeNode
                 key={child.id}
@@ -207,6 +236,11 @@ function TreeNode({
                 onToggle={onToggle}
                 onCreateFile={onCreateFile}
                 onDelete={onDelete}
+                creatingState={creatingState}
+                newItemName={newItemName}
+                onNewItemNameChange={onNewItemNameChange}
+                onConfirmCreate={onConfirmCreate}
+                onCancelCreate={onCancelCreate}
               />
             ))}
           </motion.div>
@@ -272,6 +306,14 @@ export function FileTree({
   const handleStartCreate = useCallback((parentId: string | null) => {
     setIsCreating({ type: "file", parentId });
     setNewItemName("");
+    // Auto-expand the target folder so the input is visible
+    if (parentId) {
+      setExpandedIds((prev) => {
+        const next = new Set(prev);
+        next.add(parentId);
+        return next;
+      });
+    }
   }, []);
 
   const handleConfirmCreate = useCallback(() => {
@@ -294,50 +336,14 @@ export function FileTree({
   return (
     <div className={`flex flex-col h-full ${className}`}>
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-neon-cyan/10">
+      <div className="flex items-center px-3 py-2 border-b border-neon-cyan/10">
         <span className="font-heading text-xs uppercase tracking-wider text-text-muted">
           Files
         </span>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setIsCreating({ type: "file", parentId: null })}
-            className="p-1 rounded hover:bg-neon-cyan/20 text-text-muted hover:text-neon-cyan cursor-pointer"
-            title="New file"
-          >
-            <FileIcon className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsCreating({ type: "folder", parentId: null })}
-            className="p-1 rounded hover:bg-neon-cyan/20 text-text-muted hover:text-neon-cyan cursor-pointer"
-            title="New folder"
-          >
-            <FolderIcon className="h-4 w-4" />
-          </button>
-        </div>
       </div>
 
       {/* File tree */}
       <div className="flex-1 overflow-y-auto py-2">
-        {/* New item input at root level */}
-        {isCreating && isCreating.parentId === null && (
-          <div className="px-2 py-1">
-            <input
-              type="text"
-              value={newItemName}
-              onChange={(e) => setNewItemName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleConfirmCreate();
-                if (e.key === "Escape") handleCancelCreate();
-              }}
-              autoFocus
-              placeholder={isCreating.type === "file" ? "filename.md" : "folder-name"}
-              className="w-full px-2 py-1 rounded bg-bg-elevated border border-neon-cyan/30 font-mono text-sm text-text-primary placeholder:text-text-muted/50 focus:outline-none focus:border-neon-cyan"
-            />
-          </div>
-        )}
-
         {/* Tree nodes */}
         {files.map((file) => (
           <TreeNode
@@ -348,8 +354,13 @@ export function FileTree({
             expandedIds={expandedIds}
             onSelect={onSelect}
             onToggle={handleToggle}
-            onCreateFile={handleStartCreate}
+            onCreateFile={onCreateFile ? handleStartCreate : undefined}
             onDelete={onDelete}
+            creatingState={isCreating}
+            newItemName={newItemName}
+            onNewItemNameChange={setNewItemName}
+            onConfirmCreate={handleConfirmCreate}
+            onCancelCreate={handleCancelCreate}
           />
         ))}
 

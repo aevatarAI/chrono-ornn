@@ -13,15 +13,16 @@ import type { UpdateSkillMetadata } from "@/types/api";
 const SKILLS_KEY = "skills";
 const MY_SKILLS_KEY = "my-skills";
 
-/** Search public skills with keyword mode */
+/** Search public skills */
 export function useSkills(params: {
   query?: string;
+  mode?: SkillSearchParams["mode"];
   page?: number;
   pageSize?: number;
 }) {
   const searchParams: SkillSearchParams = {
     query: params.query,
-    mode: "keyword",
+    mode: params.mode ?? "keyword",
     scope: "public",
     page: params.page,
     pageSize: params.pageSize,
@@ -33,15 +34,16 @@ export function useSkills(params: {
   });
 }
 
-/** Search current user's private skills with keyword mode */
+/** Search current user's private skills */
 export function useMySkills(params: {
   query?: string;
+  mode?: SkillSearchParams["mode"];
   page?: number;
   pageSize?: number;
 }) {
   const searchParams: SkillSearchParams = {
     query: params.query,
-    mode: "keyword",
+    mode: params.mode ?? "keyword",
     scope: "private",
     page: params.page,
     pageSize: params.pageSize,

@@ -81,6 +81,8 @@ export interface SkillDocument {
   skillHash: string;
   storageKey: string;
   createdBy: string;
+  createdByEmail?: string;
+  createdByDisplayName?: string;
   createdOn: Date;
   updatedBy: string;
   updatedOn: Date;
@@ -115,6 +117,8 @@ export interface SkillDetailResponse {
   presignedPackageUrl: string;
   isPrivate: boolean;
   createdBy: string;
+  createdByEmail?: string;
+  createdByDisplayName?: string;
   createdOn: string;
   updatedOn: string;
 }
@@ -124,6 +128,8 @@ export interface SkillSearchItem {
   name: string;
   description: string;
   createdBy: string;
+  createdByEmail?: string;
+  createdByDisplayName?: string;
   createdOn: string;
   updatedOn: string;
   isPrivate: boolean;
@@ -161,21 +167,6 @@ export interface TagDocument {
 // ---------------------------------------------------------------------------
 // Playground
 // ---------------------------------------------------------------------------
-
-export interface PlaygroundCredential {
-  id: string;
-  userId: string;
-  name: string;
-  encryptedValue: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface PlaygroundCredentialMeta {
-  id: string;
-  name: string;
-  createdAt: string;
-}
 
 // ---------------------------------------------------------------------------
 // Generation

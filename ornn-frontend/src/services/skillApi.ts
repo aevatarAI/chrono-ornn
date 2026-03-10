@@ -7,7 +7,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 
 /** Fetch a single skill by GUID or name */
 export async function fetchSkill(idOrName: string): Promise<SkillDetail> {
-  const res = await apiGet<SkillDetail>(`/api/skills/${encodeURIComponent(idOrName)}`);
+  const res = await apiGet<SkillDetail>(`/api/web/skills/${encodeURIComponent(idOrName)}`);
   return res.data!;
 }
 
@@ -16,16 +16,22 @@ export async function fetchSkill(idOrName: string): Promise<SkillDetail> {
  * Sends the ZIP as a raw application/zip body.
  */
 export async function createSkill(zipFile: File, skipValidation = false): Promise<SkillDetail> {
-  const token = useAuthStore.getState().accessToken;
+  const { accessToken: token, user } = useAuthStore.getState();
   const headers: HeadersInit = {
     "Content-Type": "application/zip",
   };
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
+  if (user?.email) {
+    headers["X-User-Email"] = user.email;
+  }
+  if (user?.displayName) {
+    headers["X-User-Display-Name"] = user.displayName;
+  }
 
   const params = skipValidation ? "?skip_validation=true" : "";
-  const response = await fetch(`${API_BASE}/api/skills${params}`, {
+  const response = await fetch(`${API_BASE}/api/web/skills${params}`, {
     method: "POST",
     headers,
     body: zipFile,
@@ -48,7 +54,7 @@ export async function createSkill(zipFile: File, skipValidation = false): Promis
  * Update skill metadata (e.g. isPrivate) via JSON body.
  */
 export async function updateSkill(id: string, data: UpdateSkillMetadata): Promise<SkillDetail> {
-  const res = await apiPut<SkillDetail>(`/api/skills/${id}`, data);
+  const res = await apiPut<SkillDetail>(`/api/web/skills/${id}`, data);
   return res.data!;
 }
 
@@ -65,7 +71,7 @@ export async function updateSkillPackage(id: string, zipFile: File, skipValidati
   }
 
   const params = skipValidation ? "?skip_validation=true" : "";
-  const response = await fetch(`${API_BASE}/api/skills/${id}${params}`, {
+  const response = await fetch(`${API_BASE}/api/web/skills/${id}${params}`, {
     method: "PUT",
     headers,
     body: zipFile,
@@ -86,5 +92,5 @@ export async function updateSkillPackage(id: string, zipFile: File, skipValidati
 
 /** Hard-delete a skill */
 export async function deleteSkill(id: string): Promise<void> {
-  await apiDelete(`/api/skills/${id}`);
+  await apiDelete(`/api/web/skills/${id}`);
 }

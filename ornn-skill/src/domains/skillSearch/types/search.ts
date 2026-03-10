@@ -6,7 +6,7 @@
 /** Parameters for the unified search endpoint. */
 export interface UnifiedSearchParams {
   query: string;
-  mode: "keyword" | "similarity";
+  mode: "keyword" | "semantic";
   scope: "public" | "private" | "mixed";
   page: number;
   pageSize: number;

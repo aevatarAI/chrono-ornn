@@ -6,7 +6,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { AuthUser, NyxIDTokenResponse, NyxIDJwtClaims } from "@/types/auth";
+import type { AuthUser, NyxIDTokenResponse, NyxIDJwtClaims, NyxIDIdTokenClaims } from "@/types/auth";
 
 const logger = {
   info: (msg: string, data?: Record<string, unknown>) =>
@@ -63,16 +63,22 @@ function decodeJwtPayload(token: string): NyxIDJwtClaims | null {
 }
 
 /**
- * Extract user info from NyxID JWT claims.
+ * Extract user info from NyxID access token claims + optional ID token claims.
+ * ID token carries profile info (email, name, picture); access token carries RBAC.
  */
-function extractUserFromClaims(claims: NyxIDJwtClaims): AuthUser {
+function extractUserFromClaims(
+  accessClaims: NyxIDJwtClaims,
+  idClaims?: NyxIDIdTokenClaims | null,
+): AuthUser {
+  const email = idClaims?.email ?? "";
+  const name = idClaims?.name ?? "";
   return {
-    id: claims.sub,
-    email: claims.email ?? "",
-    displayName: claims.name ?? claims.email ?? claims.sub,
-    avatarUrl: claims.picture ?? "",
-    roles: claims.roles ?? [],
-    permissions: claims.permissions ?? [],
+    id: accessClaims.sub,
+    email,
+    displayName: name || email || accessClaims.sub,
+    avatarUrl: idClaims?.picture ?? "",
+    roles: accessClaims.roles ?? [],
+    permissions: accessClaims.permissions ?? [],
   };
 }
 
@@ -163,15 +169,20 @@ export const useAuthStore = create<AuthState>()(
           }
 
           const tokenResponse = (await response.json()) as NyxIDTokenResponse;
-          const claims = decodeJwtPayload(tokenResponse.access_token);
-          if (!claims) {
+          const accessClaims = decodeJwtPayload(tokenResponse.access_token) as NyxIDJwtClaims | null;
+          if (!accessClaims) {
             throw new Error("Failed to decode access token");
           }
 
-          const user = extractUserFromClaims(claims);
-          const expiresAt = claims.exp * 1000;
+          // Decode ID token for user profile (email, name, picture)
+          const idClaims = tokenResponse.id_token
+            ? (decodeJwtPayload(tokenResponse.id_token) as unknown as NyxIDIdTokenClaims | null)
+            : null;
 
-          logger.info("NyxID OAuth login successful", { userId: user.id });
+          const user = extractUserFromClaims(accessClaims, idClaims);
+          const expiresAt = accessClaims.exp * 1000;
+
+          logger.info("NyxID OAuth login successful", { userId: user.id, email: user.email });
 
           set({
             accessToken: tokenResponse.access_token,
@@ -227,13 +238,22 @@ export const useAuthStore = create<AuthState>()(
           }
 
           const tokenResponse = (await response.json()) as NyxIDTokenResponse;
-          const claims = decodeJwtPayload(tokenResponse.access_token);
-          if (!claims) {
+          const accessClaims = decodeJwtPayload(tokenResponse.access_token) as NyxIDJwtClaims | null;
+          if (!accessClaims) {
             throw new Error("Failed to decode refreshed access token");
           }
 
-          const user = extractUserFromClaims(claims);
-          const expiresAt = claims.exp * 1000;
+          // Preserve profile info from initial login; only update RBAC from refreshed access token
+          const existingUser = get().user;
+          const user: AuthUser = {
+            id: accessClaims.sub,
+            email: existingUser?.email ?? "",
+            displayName: existingUser?.displayName ?? accessClaims.sub,
+            avatarUrl: existingUser?.avatarUrl ?? "",
+            roles: accessClaims.roles ?? [],
+            permissions: accessClaims.permissions ?? [],
+          };
+          const expiresAt = accessClaims.exp * 1000;
 
           logger.info("Token refresh successful");
 

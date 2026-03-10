@@ -7,14 +7,15 @@
 
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 const NAV_LINKS = [
-  { label: "Registry", href: "#skills" },
-  { label: "Documentation", href: "#framework" },
-  { label: "Developers", href: "#framework" },
+  { labelKey: "landing.navRegistry", href: "/registry" },
+  { labelKey: "landing.navDocs", href: "/docs" },
 ] as const;
 
 export function LandingNavbar() {
+  const { t } = useTranslation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -31,13 +32,13 @@ export function LandingNavbar() {
         {/* Desktop nav links */}
         <div className="hidden md:flex items-center gap-8">
           {NAV_LINKS.map((link) => (
-            <a
-              key={link.label}
-              href={link.href}
+            <Link
+              key={link.labelKey}
+              to={link.href}
               className="font-body text-base font-semibold uppercase tracking-wider text-text-muted transition-colors hover:text-text-primary"
             >
-              {link.label}
-            </a>
+              {t(link.labelKey)}
+            </Link>
           ))}
         </div>
 
@@ -47,7 +48,7 @@ export function LandingNavbar() {
             to="/login"
             className="rounded-lg border border-neon-cyan/50 bg-neon-cyan/10 px-6 py-2.5 font-body text-base font-semibold text-neon-cyan transition-all duration-200 hover:bg-neon-cyan/20 hover:border-neon-cyan hover:shadow-[0_0_15px_rgba(255,107,0,0.3)]"
           >
-            Get Started
+            {t("landing.getStarted")}
           </Link>
 
           {/* Mobile hamburger */}
@@ -68,14 +69,14 @@ export function LandingNavbar() {
       {mobileOpen && (
         <div className="md:hidden glass border-t border-neon-cyan/10 px-4 py-4 space-y-2">
           {NAV_LINKS.map((link) => (
-            <a
-              key={link.label}
-              href={link.href}
+            <Link
+              key={link.labelKey}
+              to={link.href}
               onClick={() => setMobileOpen(false)}
               className="block rounded-lg px-4 py-2 font-body text-sm text-text-muted hover:bg-neon-cyan/5 hover:text-text-primary transition-colors"
             >
-              {link.label}
-            </a>
+              {t(link.labelKey)}
+            </Link>
           ))}
         </div>
       )}

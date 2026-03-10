@@ -4,7 +4,7 @@
  * @module App
  */
 
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RootLayout } from "@/components/layout/RootLayout";
 import { AdminLayout } from "@/components/layout/AdminLayout";
@@ -17,6 +17,7 @@ import { LoginPage } from "@/pages/LoginPage";
 import { OAuthCallbackPage } from "@/pages/OAuthCallbackPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { LandingPage } from "@/pages/LandingPage";
+import { DocsPage } from "@/pages/DocsPage";
 
 // Protected pages
 import { ExplorePage } from "@/pages/ExplorePage";
@@ -34,6 +35,10 @@ import { MySkillsPage } from "@/pages/MySkillsPage";
 import {
   CategoriesPage as AdminCategoriesPage,
   TagsPage as AdminTagsPage,
+  DashboardPage as AdminDashboardPage,
+  ActivitiesPage as AdminActivitiesPage,
+  UsersPage as AdminUsersPage,
+  AdminSkillsPage,
 } from "@/pages/admin";
 
 const queryClient = new QueryClient({
@@ -52,20 +57,25 @@ export function App() {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <Routes>
-            {/* Public routes */}
-            <Route path="/landing" element={<LandingPage />} />
+            {/* Public routes (no auth) */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
+
+            {/* Public routes with RootLayout */}
+            <Route element={<RootLayout />}>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/docs" element={<DocsPage />} />
+              <Route path="/registry" element={<ExplorePage />} />
+              <Route path="/skills/:idOrName" element={<SkillDetailPage />} />
+            </Route>
 
             {/* Protected routes */}
             <Route element={<AuthGuard />}>
               <Route element={<RootLayout />}>
-                <Route path="/" element={<ExplorePage />} />
                 <Route path="/skills/new" element={<UploadSkillPage />} />
                 <Route path="/skills/new/guided" element={<CreateSkillGuidedPage />} />
                 <Route path="/skills/new/free" element={<CreateSkillFreePage />} />
                 <Route path="/skills/new/generate" element={<CreateSkillGenerativePage />} />
-                <Route path="/skills/:idOrName" element={<SkillDetailPage />} />
                 <Route path="/skills/:id/edit" element={<EditSkillPage />} />
                 <Route path="/playground" element={<PlaygroundPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
@@ -75,6 +85,11 @@ export function App() {
               {/* Admin routes - separate layout */}
               <Route element={<AdminGuard />}>
                 <Route element={<AdminLayout />}>
+                  <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+                  <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+                  <Route path="/admin/activities" element={<AdminActivitiesPage />} />
+                  <Route path="/admin/users" element={<AdminUsersPage />} />
+                  <Route path="/admin/skills" element={<AdminSkillsPage />} />
                   <Route path="/admin/categories" element={<AdminCategoriesPage />} />
                   <Route path="/admin/tags" element={<AdminTagsPage />} />
                 </Route>

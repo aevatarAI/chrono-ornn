@@ -21,17 +21,6 @@ export type AvailableModelId = (typeof AVAILABLE_MODELS)[number]["id"];
 export const DEFAULT_MODEL: AvailableModelId = "gpt-5.3-codex";
 
 // ---------------------------------------------------------------------------
-// Credential Types (no encrypted values on frontend)
-// ---------------------------------------------------------------------------
-
-export interface PlaygroundCredential {
-  id: string;
-  name: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-// ---------------------------------------------------------------------------
 // Chat Types (Responses API format)
 // ---------------------------------------------------------------------------
 

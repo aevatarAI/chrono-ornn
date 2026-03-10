@@ -9,7 +9,7 @@ chrono-ornn is an AI skill platform. Users create, publish, search, and execute 
 - **Runtime:** Bun (backend + tests), Vite (frontend dev/build)
 - **Backend framework:** Hono
 - **Frontend:** React 19, Zustand, TanStack Query, Tailwind CSS 4, Framer Motion, React Router 7
-- **Databases:** MongoDB 7, Milvus 2.5 (vector search), SQLite (credential encryption)
+- **Databases:** MongoDB 7
 - **Object storage:** chrono-storage (S3-compatible backend)
 - **AI/LLM:** Nyx Provider (NyxID LLM Gateway, Responses API format)
 - **Sandbox:** chrono-sandbox (OpenSandbox-based, supports Node.js + Python)

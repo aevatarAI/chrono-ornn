@@ -7,6 +7,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { usePlaygroundStore } from "@/stores/playgroundStore";
 import { AVAILABLE_MODELS, type AvailableModelId } from "@/types/playground";
 
@@ -29,6 +30,7 @@ export function ChatInput({
   isStreaming,
   placeholder: customPlaceholder,
 }: ChatInputProps) {
+  const { t } = useTranslation();
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -71,7 +73,7 @@ export function ChatInput({
       {/* Model selector */}
       <div className="mb-2 flex items-center gap-2">
         <label className="font-heading text-[10px] uppercase tracking-wider text-text-muted">
-          Model
+          {t("chatInput.model")}
         </label>
         <select
           value={selectedModel}
@@ -100,9 +102,9 @@ export function ChatInput({
               customPlaceholder
                 ?? (disabled
                   ? isStreaming
-                    ? "Generating response..."
-                    : "Awaiting tool approval..."
-                  : "Type a message... (Enter to send, Shift+Enter for newline)")
+                    ? t("chatInput.generating")
+                    : t("chatInput.awaitingTool")
+                  : t("chatInput.placeholder"))
             }
             rows={1}
             className="neon-input w-full resize-none rounded-lg px-4 py-3 pr-12 font-body text-sm text-text-primary placeholder:text-text-muted/50 disabled:opacity-50"
@@ -119,7 +121,7 @@ export function ChatInput({
             whileHover={{ scale: 1.02 }}
             transition={{ duration: 0.1, ease: "easeIn" }}
             className="glass cursor-pointer rounded-lg border border-neon-red/50 px-4 py-3 font-body text-sm font-semibold text-neon-red transition-all duration-200 hover:border-neon-red hover:shadow-[0_0_15px_rgba(255,0,60,0.3)]"
-            aria-label="Stop generation"
+            aria-label={t("chatInput.stopGeneration")}
           >
             <StopIcon className="h-5 w-5" />
           </motion.button>
@@ -136,7 +138,7 @@ export function ChatInput({
                 ? "border-neon-cyan/50 text-neon-cyan hover:border-neon-cyan hover:shadow-[0_0_15px_rgba(255,107,0,0.3)]"
                 : "border-text-muted/20 text-text-muted/40 cursor-not-allowed"
             }`}
-            aria-label="Send message"
+            aria-label={t("chatInput.sendMessage")}
           >
             <SendIcon className="h-5 w-5" />
           </motion.button>

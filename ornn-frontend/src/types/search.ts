@@ -1,6 +1,6 @@
 export interface SkillSearchParams {
   query?: string;
-  mode?: "keyword" | "similarity";
+  mode?: "keyword" | "semantic";
   scope?: "public" | "private" | "mixed";
   page?: number;
   pageSize?: number;
@@ -11,6 +11,8 @@ export interface SkillSearchResult {
   name: string;
   description: string;
   createdBy: string;
+  createdByEmail?: string;
+  createdByDisplayName?: string;
   createdOn: string;
   updatedOn: string;
   isPrivate: boolean;

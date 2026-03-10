@@ -17,6 +17,7 @@ import { useSkillGeneration } from "@/hooks/useSkillGeneration";
 import { useCreateSkill } from "@/hooks/useSkills";
 import { useToastStore } from "@/stores/toastStore";
 import { useAuthStore } from "@/stores/authStore";
+import { useTranslation } from "react-i18next";
 import { extractFrontmatter } from "@/utils/frontmatter";
 import {
   validateSkillFrontmatter,
@@ -47,6 +48,7 @@ function SparkleIcon({ className }: { className?: string }) {
 }
 
 export function CreateSkillGenerativePage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const addToast = useToastStore((s) => s.addToast);
   const createMutation = useCreateSkill();
@@ -77,7 +79,7 @@ export function CreateSkillGenerativePage() {
     if (hasFrontmatterErrors) {
       addToast({
         type: "error",
-        message: "Fix frontmatter validation errors before saving",
+        message: t("generative.fixErrors"),
       });
       return;
     }
@@ -102,12 +104,12 @@ export function CreateSkillGenerativePage() {
       const skill = await createMutation.mutateAsync({ zipFile });
       addToast({
         type: "success",
-        message: `Skill "${skill.name}" saved to My Skills`,
+        message: t("generative.saveSuccess", { name: skill.name }),
       });
       navigate(`/skills/${skill.name}`);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to create skill";
+        err instanceof Error ? err.message : t("generative.saveFailed");
       addToast({ type: "error", message });
     }
   };
@@ -117,7 +119,7 @@ export function CreateSkillGenerativePage() {
   const hasPreview = generation.metadata !== null;
 
   const chatInputPlaceholder = isGenerating
-    ? "Generating..."
+    ? t("generative.placeholder")
     : "Describe the skill you want to create... (Enter to send)";
 
   return (
@@ -130,12 +132,12 @@ export function CreateSkillGenerativePage() {
             className="flex items-center gap-2 text-text-muted hover:text-neon-cyan transition-colors"
           >
             <ArrowLeftIcon className="h-4 w-4" />
-            <span className="font-body text-sm">Back to mode selection</span>
+            <span className="font-body text-sm">{t("generative.backToModes")}</span>
           </Link>
           <div className="flex items-center gap-2">
             <SparkleIcon className="h-6 w-6 text-neon-yellow" />
             <h1 className="font-heading text-lg font-bold tracking-wider text-neon-yellow">
-              GENERATE SKILL
+              {t("generative.title")}
             </h1>
           </div>
           <div className="w-32" /> {/* Spacer for centering */}
@@ -155,11 +157,10 @@ export function CreateSkillGenerativePage() {
                 >
                   <SparkleIcon className="h-12 w-12 text-neon-cyan/30 mb-4" />
                   <p className="font-body text-sm text-text-muted max-w-sm">
-                    Describe the skill you need and AI will generate it for you.
-                    You can refine it with follow-up messages.
+                    {t("generative.desc")}
                   </p>
                   <p className="font-body text-xs text-text-muted/60 mt-3">
-                    Generated skills are plain or runtime-based only.
+                    {t("generative.note")}
                   </p>
                 </motion.div>
               )}
@@ -206,7 +207,7 @@ export function CreateSkillGenerativePage() {
 
                 <div className="flex items-center justify-between shrink-0 py-2">
                   <Button variant="secondary" size="sm" onClick={generation.reset}>
-                    Start Over
+                    {t("generative.startOver")}
                   </Button>
                   <Button
                     onClick={handleSave}
@@ -214,14 +215,14 @@ export function CreateSkillGenerativePage() {
                     disabled={hasFrontmatterErrors}
                     className="border-neon-green/50 text-neon-green hover:border-neon-green hover:shadow-[0_0_15px_rgba(57,255,20,0.3)]"
                   >
-                    Save Skill
+                    {t("generative.saveSkill")}
                   </Button>
                 </div>
               </div>
             ) : (
               <div className="flex items-center justify-center h-full">
                 <p className="font-body text-xs text-text-muted">
-                  Generate a skill to preview its contents
+                  {t("generative.emptyPreview")}
                 </p>
               </div>
             )}

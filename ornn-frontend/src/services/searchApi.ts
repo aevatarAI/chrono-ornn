@@ -3,7 +3,7 @@ import type { SkillSearchParams, SkillSearchResponse } from "@/types/search";
 
 /**
  * Search skills using the skill-search API.
- * GET /api/skill-search with query params.
+ * GET /api/web/skill-search with query params.
  */
 export async function searchSkills(
   params: SkillSearchParams
@@ -16,13 +16,13 @@ export async function searchSkills(
     pageSize: params.pageSize,
   };
 
-  const res = await apiGet<SkillSearchResponse>("/api/skill-search", queryParams);
+  const res = await apiGet<SkillSearchResponse>("/api/web/skill-search", queryParams);
   return res.data!;
 }
 
 /**
- * Perform a semantic similarity search.
- * Convenience wrapper around searchSkills with mode=similarity.
+ * Perform a semantic search.
+ * Convenience wrapper around searchSkills with mode=semantic.
  */
 export async function semanticSearch(
   query: string,
@@ -30,5 +30,5 @@ export async function semanticSearch(
   page?: number,
   pageSize?: number,
 ): Promise<SkillSearchResponse> {
-  return searchSkills({ query, mode: "similarity", scope, page, pageSize });
+  return searchSkills({ query, mode: "semantic", scope, page, pageSize });
 }

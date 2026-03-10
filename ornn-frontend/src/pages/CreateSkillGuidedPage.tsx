@@ -29,6 +29,7 @@ import type { FileNode } from "@/components/editor/FileTree";
 import type { SkillMetadata, SkillMetadataBlock, UploadableFolder } from "@/types/skillPackage";
 import { createDefaultSkillMetadata } from "@/types/skillPackage";
 import type { SkillCategory } from "@/utils/constants";
+import { useTranslation } from "react-i18next";
 
 interface FormState {
   name: string;
@@ -48,10 +49,10 @@ interface FormState {
 }
 
 const STEPS = [
-  { id: "basic", label: "Basic Info", description: "Name, category & tags" },
-  { id: "content", label: "Content", description: "SKILL.md body" },
-  { id: "files", label: "Files", description: "Scripts & assets" },
-  { id: "preview", label: "Preview", description: "Review & create" },
+  { id: "basic", labelKey: "guided.stepBasic", descKey: "guided.stepBasicDesc" },
+  { id: "content", labelKey: "guided.stepContent", descKey: "guided.stepContentDesc" },
+  { id: "files", labelKey: "guided.stepFiles", descKey: "guided.stepFilesDesc" },
+  { id: "preview", labelKey: "guided.stepPreview", descKey: "guided.stepPreviewDesc" },
 ];
 
 /** Build SkillMetadata from form state. */
@@ -73,10 +74,13 @@ function buildMetadata(formData: FormState): SkillMetadata {
 }
 
 export function CreateSkillGuidedPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const addToast = useToastStore((s) => s.addToast);
   const createMutation = useCreateSkill();
   const user = useAuthStore((s) => s.user);
+
+  const translatedSteps = STEPS.map(s => ({ ...s, label: t(s.labelKey), description: t(s.descKey) }));
 
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<FormState>({
@@ -287,12 +291,12 @@ export function CreateSkillGuidedPage() {
       const skill = await createMutation.mutateAsync({ zipFile });
       addToast({
         type: "success",
-        message: `Skill "${skill.name}" saved to My Skills`,
+        message: t("guided.saveSuccess", { name: skill.name }),
       });
       navigate(`/skills/${skill.name}`);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to create skill";
+        err instanceof Error ? err.message : t("guided.saveFailed");
       addToast({ type: "error", message });
     }
   };
@@ -314,7 +318,7 @@ export function CreateSkillGuidedPage() {
         {/* Step indicator (desktop) */}
         <div className="hidden md:block mb-8">
           <StepIndicator
-            steps={STEPS}
+            steps={translatedSteps}
             currentStep={currentStep}
             clickable
             onStepClick={(step) => {
@@ -327,8 +331,8 @@ export function CreateSkillGuidedPage() {
         <div className="md:hidden mb-6">
           <CompactStepIndicator
             currentStep={currentStep}
-            totalSteps={STEPS.length}
-            currentLabel={STEPS[currentStep].label}
+            totalSteps={translatedSteps.length}
+            currentLabel={translatedSteps[currentStep].label}
           />
         </div>
 
@@ -369,12 +373,12 @@ export function CreateSkillGuidedPage() {
               className={currentStep === 0 ? "invisible" : ""}
             >
               <ArrowLeftIcon className="h-4 w-4 mr-2" />
-              Back
+              {t("common.back")}
             </Button>
 
-            {currentStep < STEPS.length - 1 ? (
+            {currentStep < translatedSteps.length - 1 ? (
               <Button onClick={handleNextStep}>
-                Next
+                {t("common.next")}
                 <ArrowRightIcon className="h-4 w-4 ml-2" />
               </Button>
             ) : (
@@ -383,7 +387,7 @@ export function CreateSkillGuidedPage() {
                 loading={createMutation.isPending}
               >
                 <CheckIcon className="h-4 w-4 mr-2" />
-                Create Skill
+                {t("guided.createSkill")}
               </Button>
             )}
           </div>

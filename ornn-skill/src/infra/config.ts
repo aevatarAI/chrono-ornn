@@ -36,10 +36,6 @@ export interface SkillConfig {
   // chrono-sandbox
   readonly sandboxServiceUrl: string;
 
-  // Playground
-  readonly platformMasterKey: string;
-  readonly dataDir: string;
-
   // LLM defaults
   readonly defaultLlmModel: string;
   readonly llmMaxOutputTokens: number;
@@ -91,10 +87,6 @@ export function loadConfig(): SkillConfig {
 
     // chrono-sandbox
     sandboxServiceUrl: requiredEnv("SANDBOX_SERVICE_URL"),
-
-    // Playground
-    platformMasterKey: requiredEnv("PLATFORM_MASTER_KEY"),
-    dataDir: optionalEnv("DATA_DIR", "./data"),
 
     // LLM defaults
     defaultLlmModel: optionalEnv("DEFAULT_LLM_MODEL", "gpt-4o"),

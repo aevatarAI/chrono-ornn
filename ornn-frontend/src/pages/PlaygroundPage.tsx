@@ -8,7 +8,6 @@ import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Badge } from "@/components/ui/Badge";
 import { ChatInput } from "@/components/playground/ChatInput";
@@ -16,6 +15,7 @@ import { SkillPackagePreview } from "@/components/skill/SkillPackagePreview";
 import { useSkill } from "@/hooks/useSkills";
 import { useSkillPackage } from "@/hooks/useSkillPackage";
 import { usePlaygroundChat } from "@/hooks/usePlaygroundChat";
+import { useTranslation } from "react-i18next";
 
 /** Extract env var keys from skill metadata */
 function extractEnvVarKeys(metadata: Record<string, unknown> | null): string[] {
@@ -59,6 +59,7 @@ function ChatMessage({ role, content }: { role: string; content: string }) {
 }
 
 export function PlaygroundPage() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const skillName = searchParams.get("skill");
 
@@ -113,13 +114,13 @@ export function PlaygroundPage() {
         <div className="flex items-center justify-center h-full">
           <div className="text-center">
             <p className="font-body text-sm text-text-muted mb-4">
-              Select a skill to try in the playground.
+              {t("playground.selectSkill")}
             </p>
             <Link
-              to="/"
+              to="/registry"
               className="font-body text-sm text-neon-cyan hover:underline"
             >
-              Browse Skills
+              {t("playground.browseSkills")}
             </Link>
           </div>
         </div>
@@ -140,42 +141,28 @@ export function PlaygroundPage() {
 
   return (
     <PageTransition>
-      <div className="flex flex-col h-full">
-        {/* Header */}
-        <div className="flex items-center justify-between py-2 shrink-0">
-          <Link
-            to={`/skills/${skillName}`}
-            className="flex items-center gap-2 text-text-muted hover:text-neon-cyan transition-colors"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            <span className="font-body text-sm">Back to {skillName}</span>
-          </Link>
-          <div className="flex items-center gap-2">
-            <svg className="h-5 w-5 text-neon-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-            <h1 className="font-heading text-lg font-bold tracking-wider text-neon-cyan">
-              PLAYGROUND
-            </h1>
-          </div>
-          <Button variant="secondary" size="sm" onClick={clearChat}>
-            Clear Chat
-          </Button>
-        </div>
-
+      <div className="flex flex-col h-full py-1">
         {/* Two-column layout */}
-        <div className="flex flex-1 min-h-0 gap-4 pb-2">
+        <div className="flex flex-1 min-h-0 gap-4">
           {/* Left: Chat (40%) */}
           <div className="flex w-[40%] shrink-0 flex-col min-w-0 min-h-0">
+            {/* Clear Chat button inside chat panel */}
+            <div className="flex items-center justify-end px-2 py-1 shrink-0">
+              <button
+                type="button"
+                onClick={clearChat}
+                className="font-body text-xs text-text-muted hover:text-neon-cyan transition-colors cursor-pointer"
+              >
+                {t("playground.clearChat")}
+              </button>
+            </div>
             <div className="flex-1 min-h-0 overflow-y-auto space-y-3 px-2 py-2">
               {messages.length === 0 && !currentAssistantContent && (
                 <div className="flex flex-col items-center justify-center h-full text-center">
                   <p className="font-body text-sm text-text-muted max-w-sm">
                     {needsEnvVars && !allEnvVarsFilled
-                      ? "Fill in the required environment variables on the right to start chatting."
-                      : `Ask me anything about "${skillName}" or tell me to run it.`}
+                      ? t("playground.fillEnvVars")
+                      : t("playground.askAbout", { name: skillName })}
                   </p>
                 </div>
               )}
@@ -234,25 +221,25 @@ export function PlaygroundPage() {
                 isStreaming={isStreaming}
                 placeholder={
                   needsEnvVars && !allEnvVarsFilled
-                    ? "Fill in env vars to start chatting..."
+                    ? t("playground.fillFirst")
                     : isStreaming
                     ? "Generating..."
-                    : `Ask about "${skillName}" or tell me to run it...`
+                    : t("playground.askPlaceholder", { name: skillName })
                 }
               />
             </div>
           </div>
 
-          {/* Right: Env vars + Skill preview (60%) */}
-          <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-y-auto gap-4">
+          {/* Right: Env vars + Skill preview (60%) — fill height */}
+          <div className="flex-1 flex flex-col min-w-0 min-h-0 gap-4">
             {/* Env vars form (only for runtime-based skills with env vars) */}
             {needsEnvVars && (
               <Card>
                 <h3 className="font-heading text-sm uppercase tracking-wider text-neon-cyan mb-3">
-                  Environment Variables
+                  {t("playground.envVars")}
                 </h3>
                 <p className="font-body text-xs text-text-muted mb-3">
-                  This skill requires the following environment variables. Fill them in before chatting.
+                  {t("playground.envVarsDesc")}
                 </p>
                 <div className="space-y-2">
                   {envVarKeys.map((key) => (
@@ -264,13 +251,13 @@ export function PlaygroundPage() {
                         type="text"
                         value={envVars[key] ?? ""}
                         onChange={(e) => handleEnvVarChange(key, e.target.value)}
-                        placeholder="Enter value..."
+                        placeholder={t("playground.enterValue")}
                         className="flex-1 rounded border border-neon-cyan/20 bg-bg-deep px-2 py-1.5 font-mono text-xs text-text-primary placeholder:text-text-muted/50 focus:border-neon-cyan/50 focus:outline-none"
                       />
                       {envVars[key]?.trim() ? (
-                        <Badge color="green">Set</Badge>
+                        <Badge color="green">{t("common.set")}</Badge>
                       ) : (
-                        <Badge color="cyan">Required</Badge>
+                        <Badge color="cyan">{t("common.required")}</Badge>
                       )}
                     </div>
                   ))}
@@ -278,21 +265,24 @@ export function PlaygroundPage() {
               </Card>
             )}
 
-            {/* Skill preview */}
-            {packageLoading ? (
-              <Card><Skeleton lines={8} /></Card>
-            ) : packageFiles.length > 0 ? (
-              <SkillPackagePreview
-                files={packageFiles}
-                fileContents={packageContents}
-                metadata={null}
-                editable={false}
-              />
-            ) : (
-              <div className="flex items-center justify-center h-32">
-                <p className="font-body text-xs text-text-muted">No package contents</p>
-              </div>
-            )}
+            {/* Skill preview — fill remaining height */}
+            <div className="flex-1 min-h-0 flex flex-col">
+              {packageLoading ? (
+                <Card><Skeleton lines={8} /></Card>
+              ) : packageFiles.length > 0 ? (
+                <SkillPackagePreview
+                  files={packageFiles}
+                  fileContents={packageContents}
+                  metadata={null}
+                  editable={false}
+                  className="h-full"
+                />
+              ) : (
+                <div className="flex items-center justify-center h-32">
+                  <p className="font-body text-xs text-text-muted">{t("playground.noPackage")}</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

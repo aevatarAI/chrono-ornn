@@ -1,6 +1,7 @@
 /**
- * Skill search service. Supports keyword and smart (LLM-based) modes.
- * Smart mode loads all skills in batches and uses LLM to rank relevance.
+ * Skill search service. Supports keyword and semantic (LLM-based) modes.
+ * Semantic mode loads all skills in batches and uses LLM to rank relevance
+ * based on the full skill frontmatter metadata.
  * @module domains/skillSearch/service
  */
 
@@ -32,7 +33,7 @@ export class SearchService {
 
   async search(params: {
     query: string;
-    mode: "keyword" | "smart";
+    mode: "keyword" | "semantic";
     scope: "public" | "private" | "mixed";
     page: number;
     pageSize: number;
@@ -56,8 +57,8 @@ export class SearchService {
         skills = result.skills;
         total = result.total;
       }
-    } else if (mode === "smart") {
-      const result = await this.smartSearch({
+    } else if (mode === "semantic") {
+      const result = await this.semanticSearch({
         query,
         scope,
         currentUserId,
@@ -80,6 +81,8 @@ export class SearchService {
       name: s.name,
       description: s.description,
       createdBy: s.createdBy,
+      createdByEmail: s.createdByEmail,
+      createdByDisplayName: s.createdByDisplayName,
       createdOn: s.createdOn instanceof Date ? s.createdOn.toISOString() : String(s.createdOn),
       updatedOn: s.updatedOn instanceof Date ? s.updatedOn.toISOString() : String(s.updatedOn),
       isPrivate: s.isPrivate,
@@ -98,10 +101,11 @@ export class SearchService {
   }
 
   /**
-   * LLM-based smart search. Loads all accessible skills in batches,
-   * sends each batch to LLM for relevance scoring, then ranks results.
+   * LLM-based semantic search. Loads all accessible skills in batches,
+   * sends each batch (with full frontmatter metadata) to LLM for relevance
+   * scoring, then ranks and paginates results.
    */
-  private async smartSearch(params: {
+  private async semanticSearch(params: {
     query: string;
     scope: "public" | "private" | "mixed";
     currentUserId: string;
@@ -119,7 +123,7 @@ export class SearchService {
       return { skills: [], total: 0 };
     }
 
-    logger.info({ totalSkills: allSkills.length, query: query.slice(0, 50) }, "Smart search: evaluating skills");
+    logger.info({ totalSkills: allSkills.length, query: query.slice(0, 50) }, "Semantic search: evaluating skills");
 
     // Process in batches, collect candidate GUIDs with relevance scores
     const candidates: Array<{ guid: string; score: number; reason: string }> = [];
@@ -147,13 +151,68 @@ export class SearchService {
       .filter((s) => guidOrder.has(s.guid))
       .sort((a, b) => (guidOrder.get(a.guid) ?? 999) - (guidOrder.get(b.guid) ?? 999));
 
-    logger.debug({ matched: total, returned: skills.length }, "Smart search results");
+    logger.debug({ matched: total, returned: skills.length }, "Semantic search results");
 
     return { skills, total };
   }
 
   /**
+   * Build a compact representation of a skill's full frontmatter metadata
+   * for LLM evaluation.
+   */
+  private buildSkillSummary(skill: SkillDocument): Record<string, unknown> {
+    const summary: Record<string, unknown> = {
+      id: skill.guid,
+      name: skill.name,
+      description: skill.description,
+      category: skill.metadata?.category ?? "unknown",
+    };
+
+    if (skill.metadata?.tags?.length) {
+      summary.tags = skill.metadata.tags;
+    }
+
+    if (skill.metadata?.outputType) {
+      summary.outputType = skill.metadata.outputType;
+    }
+
+    if (skill.metadata?.runtimes?.length) {
+      summary.runtimes = skill.metadata.runtimes.map((r) => {
+        const entry: Record<string, unknown> = { runtime: r.runtime };
+        if (r.dependencies?.length) {
+          entry.dependencies = r.dependencies.map((d) => `${d.library}@${d.version}`);
+        }
+        if (r.envs?.length) {
+          entry.envVars = r.envs.map((e) => e.var);
+        }
+        return entry;
+      });
+    }
+
+    if (skill.metadata?.tools?.length) {
+      summary.tools = skill.metadata.tools.map((t) => {
+        const entry: Record<string, unknown> = { tool: t.tool, type: t.type };
+        if (t["mcp-servers"]?.length) {
+          entry.mcpServers = t["mcp-servers"].map((m) => m.mcp);
+        }
+        return entry;
+      });
+    }
+
+    if (skill.license) {
+      summary.license = skill.license;
+    }
+
+    if (skill.compatibility) {
+      summary.compatibility = skill.compatibility;
+    }
+
+    return summary;
+  }
+
+  /**
    * Send a batch of skills to LLM for relevance evaluation.
+   * Includes full frontmatter metadata for each skill.
    * Returns scored candidates from this batch.
    */
   private async evaluateBatch(
@@ -162,15 +221,11 @@ export class SearchService {
     userToken: string,
     model: string,
   ): Promise<Array<{ guid: string; score: number; reason: string }>> {
-    const skillList = batch.map((s) => ({
-      id: s.guid,
-      name: s.name,
-      description: s.description,
-      category: s.metadata?.category ?? "unknown",
-      tags: s.metadata?.tags ?? [],
-    }));
+    const skillList = batch.map((s) => this.buildSkillSummary(s));
 
-    const prompt = `You are a skill search engine. Given a user query and a list of skills, evaluate each skill's relevance to the query.
+    const prompt = `You are a skill search engine. Given a user query and a list of skills with their full metadata, evaluate each skill's relevance to the query.
+
+Consider ALL metadata fields when scoring: name, description, category, tags, output type, runtimes, dependencies, environment variables, tools, MCP servers, license, and compatibility.
 
 For each skill, assign a relevance score from 0 to 10:
 - 0: completely irrelevant
@@ -208,7 +263,7 @@ ${JSON.stringify(skillList, null, 2)}`;
       }
       const jsonMatch = text.match(/\[[\s\S]*\]/);
       if (!jsonMatch) {
-        logger.warn({ batchSize: batch.length }, "Smart search: LLM returned no parseable JSON");
+        logger.warn({ batchSize: batch.length }, "Semantic search: LLM returned no parseable JSON");
         return [];
       }
 
@@ -224,7 +279,7 @@ ${JSON.stringify(skillList, null, 2)}`;
           reason: r.reason ?? "",
         }));
     } catch (err) {
-      logger.error({ err, batchSize: batch.length }, "Smart search: LLM evaluation failed for batch");
+      logger.error({ err, batchSize: batch.length }, "Semantic search: LLM evaluation failed for batch");
       return [];
     }
   }

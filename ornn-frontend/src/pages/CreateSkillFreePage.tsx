@@ -29,6 +29,7 @@ import type { SkillMetadata } from "@/types/skillPackage";
 import { createDefaultSkillMetadata } from "@/types/skillPackage";
 import { ArrowLeftIcon, UploadIcon } from "@/components/icons";
 import type { SkillCategory } from "@/utils/constants";
+import { useTranslation } from "react-i18next";
 
 type FreePageState =
   | "idle"
@@ -147,6 +148,7 @@ function toSkillMetadata(
 }
 
 export function CreateSkillFreePage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const addToast = useToastStore((s) => s.addToast);
   const createMutation = useCreateSkill();
@@ -183,7 +185,7 @@ export function CreateSkillFreePage() {
         status: "invalid",
         files: [],
         metadata: null,
-        errors: ["Only .zip files are accepted."],
+        errors: [t("free.onlyZip")],
         warnings: [],
       });
       return;
@@ -197,7 +199,7 @@ export function CreateSkillFreePage() {
         files: [],
         metadata: null,
         errors: [
-          `File exceeds the maximum size of 50 MB (${formatFileSize(file.size)}).`,
+          t("free.tooLarge", { size: formatFileSize(file.size) }),
         ],
         warnings: [],
       });
@@ -251,12 +253,12 @@ export function CreateSkillFreePage() {
       const skill = await createMutation.mutateAsync({ zipFile, skipValidation });
       addToast({
         type: "success",
-        message: `Skill "${skill.name}" uploaded successfully`,
+        message: t("free.uploadSuccess", { name: skill.name }),
       });
       navigate(`/skills/${skill.name}`);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to upload skill";
+        err instanceof Error ? err.message : t("free.uploadFailed");
       addToast({ type: "error", message });
       setPageState(
         validationResult?.status === "warning" ? "warning" : "valid",
@@ -283,16 +285,16 @@ export function CreateSkillFreePage() {
           className="flex items-center gap-2 mb-6 text-text-muted hover:text-neon-cyan transition-colors"
         >
           <ArrowLeftIcon className="h-4 w-4" />
-          <span className="font-body text-sm">Back to mode selection</span>
+          <span className="font-body text-sm">{t("free.backToModes")}</span>
         </Link>
 
         {/* Title */}
         <div className="mb-8">
           <h1 className="neon-magenta mb-2 font-heading text-2xl font-bold tracking-wider text-neon-magenta sm:text-3xl">
-            UPLOAD SKILL PACKAGE
+            {t("free.title")}
           </h1>
           <p className="font-body text-text-muted">
-            Upload a pre-built skill as a .zip file
+            {t("free.subtitle")}
           </p>
         </div>
 
@@ -330,16 +332,16 @@ export function CreateSkillFreePage() {
                   }}
                   className="mt-2 text-xs text-neon-red hover:underline cursor-pointer"
                 >
-                  Choose a different file
+                  {t("free.changeFile")}
                 </button>
               </div>
             ) : (
               <div className="text-center">
                 <p className="font-body text-sm text-text-muted">
-                  Drag & drop a .zip file or click to browse
+                  {t("free.dropzone")}
                 </p>
                 <p className="mt-1 text-xs text-text-muted/60">
-                  .zip files up to 50 MB
+                  {t("free.maxSize")}
                 </p>
               </div>
             )}
@@ -362,7 +364,7 @@ export function CreateSkillFreePage() {
             <div className="flex items-center justify-center py-8">
               <span className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-neon-cyan border-t-transparent mr-3" />
               <p className="font-body text-sm text-text-muted">
-                Validating package structure...
+                {t("free.validating")}
               </p>
             </div>
           </Card>
@@ -391,13 +393,12 @@ export function CreateSkillFreePage() {
             ))}
             {pageState === "valid" && !hasFrontmatterErrors && (
               <p className="font-body text-sm text-neon-green">
-                Package structure is valid.
+                {t("free.valid")}
               </p>
             )}
             {hasFrontmatterErrors && pageState !== "invalid" && (
               <p className="font-body text-sm text-neon-yellow mt-1">
-                Package structure is valid, but frontmatter has
-                validation errors. Fix them before uploading.
+                {t("free.validWithErrors")}
               </p>
             )}
           </div>
@@ -415,7 +416,7 @@ export function CreateSkillFreePage() {
         {zipFile && pageState !== "validating" && (
           <div className="mb-6 flex items-center justify-end gap-3">
             <label className="flex items-center gap-2 cursor-pointer select-none">
-              <span className="font-body text-xs text-text-muted">Skip validation</span>
+              <span className="font-body text-xs text-text-muted">{t("free.skipValidation")}</span>
               <button
                 type="button"
                 role="switch"
@@ -437,7 +438,7 @@ export function CreateSkillFreePage() {
               loading={createMutation.isPending}
               disabled={!skipValidation && (pageState === "invalid" || hasFrontmatterErrors || !previewMetadata)}
             >
-              Upload Skill
+              {t("free.uploadSkill")}
             </Button>
           </div>
         )}

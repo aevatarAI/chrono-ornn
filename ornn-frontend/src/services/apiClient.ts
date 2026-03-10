@@ -136,24 +136,29 @@ async function fetchWithRetry<T>(
 ): Promise<ApiResponse<T>> {
   const response = await fetch(url, options);
 
-  // Handle 401 Unauthorized
+  // Handle 401 Unauthorized — only attempt refresh if user was authenticated
   if (response.status === 401 && !retried) {
-    const refreshSuccess = await attemptTokenRefresh();
+    const hadToken = !!getAccessToken();
 
-    if (refreshSuccess) {
-      const newHeaders = {
-        ...options.headers,
-        Authorization: `Bearer ${getAccessToken()}`,
-      };
+    if (hadToken) {
+      const refreshSuccess = await attemptTokenRefresh();
 
-      return fetchWithRetry<T>(url, { ...options, headers: newHeaders }, true);
+      if (refreshSuccess) {
+        const newHeaders = {
+          ...options.headers,
+          Authorization: `Bearer ${getAccessToken()}`,
+        };
+
+        return fetchWithRetry<T>(url, { ...options, headers: newHeaders }, true);
+      }
+
+      // Refresh failed for an authenticated user, redirect to login
+      logger.error("Token refresh failed, redirecting to login");
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
     }
-
-    // Refresh failed, redirect to login
-    logger.error("Token refresh failed, redirecting to login");
-    if (typeof window !== "undefined") {
-      window.location.href = "/login";
-    }
+    // Anonymous user got 401 — don't redirect, just let the error propagate
   }
 
   return handleResponse<T>(response);

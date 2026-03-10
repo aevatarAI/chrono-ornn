@@ -1,6 +1,6 @@
 /**
  * Skill search routes with NyxID auth.
- * GET /api/skill-search — keyword and smart (LLM) search.
+ * GET /api/skill-search — keyword and semantic (LLM) search.
  * @module domains/skillSearch/routes
  */
 
@@ -10,9 +10,7 @@ import type { SearchService } from "./service";
 import {
   type AuthVariables,
   type NyxIDAuthConfig,
-  nyxidAuthMiddleware,
-  requirePermission,
-  getAuth,
+  optionalAuthMiddleware,
 } from "../../middleware/nyxidAuth";
 import { AppError } from "../../shared/types/index";
 import pino from "pino";
@@ -21,7 +19,7 @@ const logger = pino({ level: "info" }).child({ module: "skillSearchRoutes" });
 
 const searchQuerySchema = z.object({
   query: z.string().max(2000).optional().default(""),
-  mode: z.enum(["keyword", "smart"]).optional().default("keyword"),
+  mode: z.enum(["keyword", "semantic"]).optional().default("keyword"),
   scope: z.enum(["public", "private", "mixed"]).optional().default("private"),
   page: z.coerce.number().int().min(1).optional().default(1),
   pageSize: z.coerce.number().int().min(1).max(100).optional().default(9),
@@ -37,18 +35,17 @@ export function createSearchRoutes(config: SearchRoutesConfig): Hono<{ Variables
   const { searchService, authConfig } = config;
   const app = new Hono<{ Variables: AuthVariables }>();
 
-  const auth = nyxidAuthMiddleware(authConfig);
+  const optionalAuth = optionalAuthMiddleware(authConfig);
 
   /**
    * GET /skill-search — Unified search endpoint.
-   * Auth: NyxID JWT or API Key.
-   * Requires: ornn:skill:read
-   * Modes: keyword (MongoDB regex), smart (LLM batch evaluation)
+   * Auth: Optional. Anonymous users can only search public skills.
+   * Authenticated users can search public, private, or mixed scope.
+   * Modes: keyword (MongoDB regex), semantic (LLM-based relevance ranking)
    */
   app.get(
     "/skill-search",
-    auth,
-    requirePermission("ornn:skill:read"),
+    optionalAuth,
     async (c) => {
       const raw = {
         query: c.req.query("query"),
@@ -67,19 +64,32 @@ export function createSearchRoutes(config: SearchRoutesConfig): Hono<{ Variables
         );
       }
 
-      const { query, mode, scope, page, pageSize, model } = parsed.data;
+      const { query, mode, page, pageSize, model } = parsed.data;
+      const authCtx = c.get("auth");
+      const isAnonymous = !authCtx;
 
-      if (mode === "smart" && (!query || query.trim() === "")) {
-        throw AppError.badRequest(
-          "QUERY_REQUIRED",
-          "Query parameter is required when search mode is 'smart'",
-        );
+      // Anonymous users can only search public scope
+      const scope = isAnonymous ? "public" : parsed.data.scope;
+      const currentUserId = authCtx?.userId ?? "";
+
+      if (mode === "semantic") {
+        if (!query || query.trim() === "") {
+          throw AppError.badRequest(
+            "QUERY_REQUIRED",
+            "Query parameter is required when search mode is 'semantic'",
+          );
+        }
+        if (isAnonymous) {
+          throw AppError.badRequest(
+            "AUTH_REQUIRED",
+            "Semantic search requires authentication",
+          );
+        }
       }
 
-      const authCtx = getAuth(c);
-      logger.debug({ mode, scope, query: query.slice(0, 50), userId: authCtx.userId }, "Search request");
+      logger.debug({ mode, scope, query: query.slice(0, 50), userId: currentUserId, anonymous: isAnonymous }, "Search request");
 
-      // Extract bearer token for LLM passthrough (smart search)
+      // Extract bearer token for LLM passthrough (semantic search)
       const authHeader = c.req.header("Authorization") ?? "";
       const userToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
 
@@ -89,7 +99,7 @@ export function createSearchRoutes(config: SearchRoutesConfig): Hono<{ Variables
         scope,
         page,
         pageSize,
-        currentUserId: authCtx.userId,
+        currentUserId,
         userToken,
         model,
       });

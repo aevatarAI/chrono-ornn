@@ -40,7 +40,7 @@ export class SkillService {
   async createSkill(
     zipBuffer: Uint8Array,
     userId: string,
-    options?: { skipValidation?: boolean },
+    options?: { skipValidation?: boolean; userEmail?: string; userDisplayName?: string },
   ): Promise<{ guid: string }> {
     // 1. Validate ZIP format rules
     if (!options?.skipValidation) {
@@ -82,6 +82,8 @@ export class SkillService {
       skillHash,
       storageKey,
       createdBy: userId,
+      createdByEmail: options?.userEmail,
+      createdByDisplayName: options?.userDisplayName,
       isPrivate: true,
     });
 
@@ -363,6 +365,8 @@ export class SkillService {
       presignedPackageUrl,
       isPrivate: skill.isPrivate,
       createdBy: skill.createdBy,
+      createdByEmail: skill.createdByEmail,
+      createdByDisplayName: skill.createdByDisplayName,
       createdOn: skill.createdOn instanceof Date ? skill.createdOn.toISOString() : String(skill.createdOn),
       updatedOn: skill.updatedOn instanceof Date ? skill.updatedOn.toISOString() : String(skill.updatedOn),
     };

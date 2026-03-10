@@ -9,6 +9,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { useAuthStore } from "@/stores/authStore";
+import { logActivity } from "@/services/activityApi";
 
 type CallbackState =
   | { status: "loading" }
@@ -48,8 +49,11 @@ export function OAuthCallbackPage() {
       try {
         await useAuthStore.getState().handleNyxIDCallback(code);
 
+        // Log login activity (fire-and-forget)
+        logActivity("login");
+
         // Redirect to intended destination or home
-        const redirectTo = sessionStorage.getItem("login_redirect") || "/";
+        const redirectTo = sessionStorage.getItem("login_redirect") || "/registry";
         sessionStorage.removeItem("login_redirect");
         navigate(redirectTo, { replace: true });
       } catch (err) {

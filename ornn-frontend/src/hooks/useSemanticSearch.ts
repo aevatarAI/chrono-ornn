@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { searchSkills } from "@/services/searchApi";
 import type { SkillSearchParams } from "@/types/search";
 
-/** Query hook for semantic (similarity) skill search */
+/** Query hook for semantic skill search */
 export function useSemanticSearch(params: {
   query: string;
   scope?: SkillSearchParams["scope"];
@@ -12,7 +12,7 @@ export function useSemanticSearch(params: {
 }) {
   const searchParams: SkillSearchParams = {
     query: params.query,
-    mode: "similarity",
+    mode: "semantic",
     scope: params.scope ?? "public",
     page: params.page,
     pageSize: params.pageSize,

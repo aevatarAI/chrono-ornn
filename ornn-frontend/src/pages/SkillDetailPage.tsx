@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/Badge";
 import { SkillPackagePreview } from "@/components/skill/SkillPackagePreview";
 import { useSkill, useDeleteSkill, useUpdateSkill, useUpdateSkillPackage } from "@/hooks/useSkills";
 import { useSkillPackage } from "@/hooks/useSkillPackage";
-import { useCurrentUser } from "@/stores/authStore";
+import { useCurrentUser, useIsAuthenticated } from "@/stores/authStore";
 import { useToastStore } from "@/stores/toastStore";
 import { buildFileTreeFromEntries, type FileTreeEntry } from "@/utils/fileTreeBuilder";
 
@@ -28,6 +28,7 @@ function formatDateSGT(dateStr: string): string {
     hour12: false,
   });
 }
+import { useTranslation } from "react-i18next";
 import type { FileNode } from "@/components/editor/FileTree";
 
 export function SkillDetailPage() {
@@ -35,6 +36,8 @@ export function SkillDetailPage() {
   const navigate = useNavigate();
   const addToast = useToastStore((s) => s.addToast);
   const user = useCurrentUser();
+  const isAuthenticated = useIsAuthenticated();
+  const { t } = useTranslation();
   const { data: skill, isLoading, error, refetch } = useSkill(idOrName ?? "");
   const deleteMutation = useDeleteSkill();
   const updateMutation = useUpdateSkill(skill?.guid ?? "");
@@ -48,9 +51,10 @@ export function SkillDetailPage() {
     error: packageError,
   } = useSkillPackage(skill?.presignedPackageUrl);
 
-  const isOwner = user?.id && skill?.createdBy === user.id;
+  const isOwner = isAuthenticated && user?.id && skill?.createdBy === user.id;
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [editedContents, setEditedContents] = useState<Map<string, string>>(new Map());
   const [addedPaths, setAddedPaths] = useState<FileTreeEntry[]>([]);
   const [deletedPaths, setDeletedPaths] = useState<Set<string>>(new Set());
@@ -82,24 +86,38 @@ export function SkillDetailPage() {
   }, []);
 
   const handleDeleteFile = useCallback((fileId: string) => {
-    // If it's a newly added file, just remove it from addedPaths and editedContents
-    if (addedPaths.some((e) => e.path === fileId)) {
-      setAddedPaths((prev) => prev.filter((e) => e.path !== fileId));
+    const prefix = fileId + "/";
+    const isAdded = addedPaths.some((e) => e.path === fileId || e.path.startsWith(prefix));
+
+    if (isAdded) {
+      // Remove the item and all children from addedPaths and editedContents
+      setAddedPaths((prev) => prev.filter((e) => e.path !== fileId && !e.path.startsWith(prefix)));
       setEditedContents((prev) => {
         const next = new Map(prev);
-        next.delete(fileId);
+        for (const key of next.keys()) {
+          if (key === fileId || key.startsWith(prefix)) next.delete(key);
+        }
         return next;
       });
     } else {
-      // Mark existing file for deletion
-      setDeletedPaths((prev) => new Set(prev).add(fileId));
+      // Mark existing file/folder and all children for deletion
+      setDeletedPaths((prev) => {
+        const next = new Set(prev);
+        next.add(fileId);
+        for (const key of packageContents.keys()) {
+          if (key.startsWith(prefix)) next.add(key);
+        }
+        return next;
+      });
       setEditedContents((prev) => {
         const next = new Map(prev);
-        next.delete(fileId);
+        for (const key of next.keys()) {
+          if (key === fileId || key.startsWith(prefix)) next.delete(key);
+        }
         return next;
       });
     }
-  }, [addedPaths]);
+  }, [addedPaths, packageContents]);
 
   const mergedContents = useMemo(() => {
     const merged = new Map(packageContents);
@@ -140,8 +158,9 @@ export function SkillDetailPage() {
     return buildFileTreeFromEntries(entries);
   }, [packageFiles, addedPaths, deletedPaths]);
 
-  const handleSave = async () => {
+  const handleSave = async (skip: boolean) => {
     if (!skill) return;
+    setShowSaveConfirm(false);
     try {
       const newZip = new JSZip();
 
@@ -168,14 +187,14 @@ export function SkillDetailPage() {
 
       const blob = await newZip.generateAsync({ type: "blob" });
       const zipFile = new File([blob], `${skill.name}.zip`, { type: "application/zip" });
-      await updatePackageMutation.mutateAsync({ zipFile, skipValidation });
-      addToast({ type: "success", message: "Skill updated" });
+      await updatePackageMutation.mutateAsync({ zipFile, skipValidation: skip });
+      addToast({ type: "success", message: t("skillDetail.updateSuccess") });
       setEditedContents(new Map());
       setAddedPaths([]);
       setDeletedPaths(new Set());
       refetch();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to save package";
+      const message = err instanceof Error ? err.message : t("skillDetail.saveFailed");
       addToast({ type: "error", message });
     }
   };
@@ -184,10 +203,10 @@ export function SkillDetailPage() {
     if (!skill) return;
     try {
       await deleteMutation.mutateAsync(skill.guid);
-      addToast({ type: "success", message: "Skill deleted" });
-      navigate("/");
+      addToast({ type: "success", message: t("skillDetail.deleteSuccess") });
+      navigate("/registry");
     } catch {
-      addToast({ type: "error", message: "Failed to delete skill" });
+      addToast({ type: "error", message: t("skillDetail.deleteFailed") });
     } finally {
       setShowDeleteConfirm(false);
     }
@@ -199,22 +218,19 @@ export function SkillDetailPage() {
       await updateMutation.mutateAsync({ isPrivate: !skill.isPrivate });
       addToast({
         type: "success",
-        message: skill.isPrivate ? "Skill is now public" : "Skill is now private",
+        message: skill.isPrivate ? t("skillDetail.nowPublic") : t("skillDetail.nowPrivate"),
       });
       refetch();
     } catch {
-      addToast({ type: "error", message: "Failed to update visibility" });
+      addToast({ type: "error", message: t("skillDetail.visibilityFailed") });
     }
   };
 
   if (isLoading) {
     return (
       <PageTransition>
-        <div className="h-full overflow-y-auto py-4">
-        <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
-          <Card><Skeleton lines={10} /></Card>
-          <Card><Skeleton lines={8} /></Card>
-        </div>
+        <div className="flex items-center justify-center h-full">
+          <Skeleton lines={10} />
         </div>
       </PageTransition>
     );
@@ -223,12 +239,12 @@ export function SkillDetailPage() {
   if (error || !skill) {
     return (
       <PageTransition>
-        <div className="h-full overflow-y-auto py-4">
-        <div className="py-20 text-center">
-          <h2 className="mb-2 font-heading text-2xl text-neon-red">Skill Not Found</h2>
-          <p className="text-text-muted">The skill you are looking for does not exist.</p>
-          <Button onClick={() => navigate("/")} className="mt-6">Back to Explore</Button>
-        </div>
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <h2 className="mb-2 font-heading text-2xl text-neon-red">{t("skillDetail.notFound")}</h2>
+            <p className="text-text-muted">{t("skillDetail.notFoundDesc")}</p>
+            <Button onClick={() => navigate("/registry")} className="mt-6">{t("skillDetail.backToExplore")}</Button>
+          </div>
         </div>
       </PageTransition>
     );
@@ -236,181 +252,232 @@ export function SkillDetailPage() {
 
   return (
     <PageTransition>
-      <div className="h-full overflow-y-auto py-4">
-      {/* Header: fixed layout with title/description on left, buttons on right */}
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <h1 className="neon-cyan font-heading text-2xl font-bold tracking-wider text-neon-cyan sm:text-3xl truncate">
-            {skill.name}
-          </h1>
-          <p className="mt-1 font-body text-text-muted line-clamp-2">{skill.description}</p>
-        </div>
-        <div className="flex shrink-0 items-center gap-3">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => navigate(`/playground?skill=${encodeURIComponent(skill.name)}`)}
-          >
-            Try in Playground
-          </Button>
-          {/* Toggle visibility (owner only) */}
-          {isOwner && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleToggleVisibility}
-              loading={updateMutation.isPending}
-            >
-              {skill.isPrivate ? "Make Public" : "Make Private"}
-            </Button>
-          )}
-
-          {/* Owner actions */}
-          {isOwner && (
-            <Button variant="danger" size="sm" onClick={() => setShowDeleteConfirm(true)}>
-              Delete
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <div className="grid gap-8 lg:grid-cols-[1fr_320px] items-start">
-        {/* Main content — Package Contents */}
-        <Card>
-          <div className="mb-4 flex items-center justify-between">
+      <div className="flex flex-col h-full py-2">
+      <div className="flex-1 min-h-0 grid gap-4 lg:grid-cols-[1fr_300px]">
+        {/* Main content — Package Contents (fills available height) */}
+        <Card className="flex flex-col min-h-0 overflow-hidden">
+          <div className="mb-3 flex items-center justify-between shrink-0">
             <h3 className="font-heading text-sm uppercase tracking-wider text-neon-cyan">
-              Package Contents
+              {t("skillDetail.packageContents")}
             </h3>
             {isOwner && (
-              <div className="flex items-center gap-3">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <span className="font-body text-xs text-text-muted">Skip validation</span>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={skipValidation}
-                    onClick={() => setSkipValidation((v) => !v)}
-                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-                      skipValidation ? "bg-neon-cyan" : "bg-bg-elevated"
-                    }`}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
-                        skipValidation ? "translate-x-4" : "translate-x-0"
-                      }`}
-                    />
-                  </button>
-                </label>
-                <Button
-                  size="sm"
-                  onClick={handleSave}
-                  disabled={!hasChanges}
-                  loading={updatePackageMutation.isPending}
-                >
-                  Save
-                </Button>
-              </div>
+              <Button
+                size="sm"
+                onClick={() => setShowSaveConfirm(true)}
+                disabled={!hasChanges}
+                loading={updatePackageMutation.isPending}
+              >
+                {t("common.save")}
+              </Button>
             )}
           </div>
-          {packageLoading ? (
-            <Skeleton lines={8} />
-          ) : packageError ? (
-            <p className="py-8 text-center font-body text-sm text-text-muted">
-              Failed to load package contents.
-            </p>
-          ) : (packageFiles.length > 0 || addedPaths.length > 0) ? (
-            <SkillPackagePreview
-              files={mergedFiles}
-              fileContents={mergedContents}
-              metadata={null}
-              editable={!!isOwner}
-              onContentChange={handleContentChange}
-              onCreateFile={isOwner ? handleCreateFile : undefined}
-              onCreateFolder={isOwner ? handleCreateFolder : undefined}
-              onFileDelete={isOwner ? handleDeleteFile : undefined}
-            />
-          ) : (
-            <p className="py-8 text-center font-body text-sm text-text-muted">
-              No package contents available.
-            </p>
-          )}
+          <div className="flex-1 min-h-0">
+            {packageLoading ? (
+              <Skeleton lines={8} />
+            ) : packageError ? (
+              <p className="py-8 text-center font-body text-sm text-text-muted">
+                {t("skillDetail.failedPackage")}
+              </p>
+            ) : (packageFiles.length > 0 || addedPaths.length > 0) ? (
+              <SkillPackagePreview
+                files={mergedFiles}
+                fileContents={mergedContents}
+                metadata={null}
+                editable={!!isOwner}
+                onContentChange={handleContentChange}
+                onCreateFile={isOwner ? handleCreateFile : undefined}
+                onCreateFolder={isOwner ? handleCreateFolder : undefined}
+                onFileDelete={isOwner ? handleDeleteFile : undefined}
+                className="h-full"
+              />
+            ) : (
+              <p className="py-8 text-center font-body text-sm text-text-muted">
+                {t("skillDetail.noPackage")}
+              </p>
+            )}
+          </div>
         </Card>
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          <Card>
-            <h3 className="mb-4 font-heading text-sm uppercase tracking-wider text-neon-cyan">
-              Details
-            </h3>
-            <div className="space-y-3 font-body text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-text-muted">Author</span>
-                <div className="flex items-center gap-2">
-                  {isOwner && user?.avatarUrl ? (
-                    <img
-                      src={user.avatarUrl}
-                      alt=""
-                      className="h-5 w-5 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-bg-elevated text-[10px] text-text-muted">
-                      {(isOwner && user?.displayName ? user.displayName : skill.createdBy).charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <span className="text-text-primary">
-                    {isOwner && user?.displayName ? user.displayName : skill.createdBy}
-                  </span>
+        {/* Sidebar — unified panel */}
+        <div className="flex flex-col min-h-0 overflow-y-auto gap-4">
+          {/* Info card */}
+          <div className="glass rounded-xl p-5 space-y-5">
+            {/* Description */}
+            <div>
+              <p className="font-heading text-[11px] uppercase tracking-wider text-text-muted mb-1.5">{t("skillDetail.description")}</p>
+              <p className="font-body text-sm text-text-primary leading-relaxed">
+                {skill.description}
+              </p>
+            </div>
+
+            {/* Tags */}
+            {skill.tags.length > 0 && (
+              <div>
+                <p className="font-heading text-[11px] uppercase tracking-wider text-text-muted mb-1.5">{t("skillDetail.tags")}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {skill.tags.map((tag) => (
+                    <Badge key={tag} color="cyan">{tag}</Badge>
+                  ))}
                 </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-text-muted">Created</span>
-                <span className="text-text-primary">{formatDateSGT(skill.createdOn)}</span>
+            )}
+
+            {/* Author */}
+            <div>
+              <p className="font-heading text-[11px] uppercase tracking-wider text-text-muted mb-1.5">{t("skillDetail.author")}</p>
+              <div className="flex items-center gap-2.5">
+                {isOwner && user?.avatarUrl ? (
+                  <img src={user.avatarUrl} alt="" className="h-6 w-6 rounded-full object-cover" />
+                ) : (
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-bg-elevated text-[10px] text-text-muted ring-1 ring-neon-cyan/20">
+                    {(isOwner && user?.displayName ? user.displayName : skill.createdByDisplayName || skill.createdByEmail || skill.createdBy).charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <span className="font-body text-sm text-text-primary truncate">
+                  {isOwner && user?.displayName ? user.displayName : skill.createdByDisplayName || skill.createdByEmail || skill.createdBy}
+                </span>
+              </div>
+            </div>
+
+            {/* Metadata grid */}
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+              <div>
+                <p className="font-heading text-[11px] uppercase tracking-wider text-text-muted mb-0.5">{t("skillDetail.created")}</p>
+                <p className="font-body text-xs text-text-primary">{formatDateSGT(skill.createdOn)}</p>
               </div>
               {skill.updatedOn && (
-                <div className="flex items-center justify-between">
-                  <span className="text-text-muted">Updated</span>
-                  <span className="text-text-primary">{formatDateSGT(skill.updatedOn)}</span>
+                <div>
+                  <p className="font-heading text-[11px] uppercase tracking-wider text-text-muted mb-0.5">{t("skillDetail.updated")}</p>
+                  <p className="font-body text-xs text-text-primary">{formatDateSGT(skill.updatedOn)}</p>
                 </div>
               )}
-              <div className="flex items-center justify-between">
-                <span className="text-text-muted">Visibility</span>
+              <div>
+                <p className="font-heading text-[11px] uppercase tracking-wider text-text-muted mb-0.5">{t("skillDetail.visibility")}</p>
                 <Badge color={skill.isPrivate ? "cyan" : "green"}>
-                  {skill.isPrivate ? "Private" : "Public"}
+                  {skill.isPrivate ? t("common.private") : t("common.public")}
                 </Badge>
               </div>
             </div>
-          </Card>
 
-          {skill.tags.length > 0 && (
-            <Card>
-              <h3 className="mb-4 font-heading text-sm uppercase tracking-wider text-neon-cyan">
-                Tags
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {skill.tags.map((tag) => (
-                  <Badge key={tag} color="cyan">{tag}</Badge>
-                ))}
-              </div>
-            </Card>
-          )}
+            {/* Actions — only for authenticated users */}
+            {isAuthenticated && (
+              <>
+                <div className="border-t border-neon-cyan/10" />
+                <div className="space-y-2">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => navigate(`/playground?skill=${encodeURIComponent(skill.name)}`)}
+                  >
+                    {t("skillDetail.tryPlayground")}
+                  </Button>
+                  {rawZip && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="w-full"
+                      onClick={async () => {
+                        const blob = await rawZip.generateAsync({ type: "blob" });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `${skill.name}.zip`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      }}
+                    >
+                      <span className="flex items-center justify-center gap-2">
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        {t("skillDetail.downloadSkill")}
+                      </span>
+                    </Button>
+                  )}
+                  {isOwner && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="w-full"
+                      onClick={handleToggleVisibility}
+                      loading={updateMutation.isPending}
+                    >
+                      {skill.isPrivate ? t("skillDetail.makePublic") : t("skillDetail.makePrivate")}
+                    </Button>
+                  )}
+                  {isOwner && (
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => setShowDeleteConfirm(true)}
+                    >
+                      {t("common.delete")}
+                    </Button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Save confirmation modal */}
+      <Modal
+        isOpen={showSaveConfirm}
+        onClose={() => setShowSaveConfirm(false)}
+        title={t("skillDetail.saveChanges")}
+      >
+        <p className="font-body text-sm text-text-muted mb-4">
+          {t("skillDetail.saveConfirm", { name: skill.name })}
+        </p>
+        <label className="flex items-center gap-3 cursor-pointer select-none glass rounded-lg p-3 border border-neon-cyan/10">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={skipValidation}
+            onClick={() => setSkipValidation((v) => !v)}
+            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+              skipValidation ? "bg-neon-cyan" : "bg-bg-elevated"
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                skipValidation ? "translate-x-4" : "translate-x-0"
+              }`}
+            />
+          </button>
+          <div>
+            <p className="font-body text-sm text-text-primary">{t("skillDetail.skipValidation")}</p>
+            <p className="font-body text-xs text-text-muted">{t("skillDetail.skipDescription")}</p>
+          </div>
+        </label>
+        <div className="mt-6 flex justify-end gap-3">
+          <Button variant="secondary" size="sm" onClick={() => setShowSaveConfirm(false)}>
+            {t("common.cancel")}
+          </Button>
+          <Button size="sm" onClick={() => handleSave(skipValidation)} loading={updatePackageMutation.isPending}>
+            {t("common.save")}
+          </Button>
+        </div>
+      </Modal>
 
       {/* Delete confirmation modal */}
       <Modal
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
-        title="Delete Skill"
+        title={t("skillDetail.deleteTitle")}
       >
         <p className="font-body text-sm text-text-muted">
-          Are you sure you want to delete <span className="text-text-primary font-semibold">{skill.name}</span>? This action cannot be undone.
+          {t("skillDetail.deleteConfirm", { name: skill.name }).replace(/<\/?strong>/g, "")}
         </p>
         <div className="mt-6 flex justify-end gap-3">
           <Button variant="secondary" size="sm" onClick={() => setShowDeleteConfirm(false)}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button variant="danger" size="sm" onClick={handleDeleteConfirm} loading={deleteMutation.isPending}>
-            Delete
+            {t("common.delete")}
           </Button>
         </div>
       </Modal>

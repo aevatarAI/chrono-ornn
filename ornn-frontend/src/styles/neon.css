@@ -18,6 +18,20 @@
   --font-mono: "JetBrains Mono", monospace;
 }
 
+/* ──────── Light mode overrides ──────── */
+[data-theme="light"] {
+  --color-bg-deep: #fafafa;
+  --color-bg-surface: #ffffff;
+  --color-bg-elevated: #f3f3f5;
+  --color-text-primary: #2d2d2d;
+  --color-text-muted: #888888;
+  --color-neon-cyan: #d45a00;
+  --color-neon-magenta: #c06000;
+  --color-neon-yellow: #b38200;
+  --color-neon-green: #1a8c0a;
+  --color-neon-red: #d42020;
+}
+
 /* Base */
 body {
   font-family: var(--font-body);
@@ -31,17 +45,23 @@ code, pre {
   font-family: var(--font-mono);
 }
 
-/* Forge glow text */
+/* Forge glow text — subtle single-layer glow */
 .neon-cyan {
-  text-shadow: 0 0 7px #FF6B00, 0 0 20px #FF6B00, 0 0 40px #FF6B00;
+  text-shadow: 0 0 8px rgba(255, 107, 0, 0.5);
 }
 
 .neon-magenta {
-  text-shadow: 0 0 7px #FF8C38, 0 0 20px #FF8C38, 0 0 40px #FF8C38;
+  text-shadow: 0 0 8px rgba(255, 140, 56, 0.5);
 }
 
 .neon-yellow {
-  text-shadow: 0 0 7px #FFB800, 0 0 20px #FFB800, 0 0 40px #FFB800;
+  text-shadow: 0 0 8px rgba(255, 184, 0, 0.5);
+}
+
+[data-theme="light"] .neon-cyan,
+[data-theme="light"] .neon-magenta,
+[data-theme="light"] .neon-yellow {
+  text-shadow: none;
 }
 
 /* Forge border glow */
@@ -65,6 +85,16 @@ code, pre {
 .glass-hover:hover {
   border-color: rgba(255, 107, 0, 0.35);
   box-shadow: 0 0 15px rgba(255, 107, 0, 0.15);
+}
+
+[data-theme="light"] .glass {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .glass-hover:hover {
+  border-color: rgba(212, 90, 0, 0.35);
+  box-shadow: 0 2px 12px rgba(212, 90, 0, 0.08);
 }
 
 /* Scanline overlay */
@@ -105,6 +135,18 @@ code, pre {
   background: #FF6B0088;
 }
 
+[data-theme="light"] ::-webkit-scrollbar-track {
+  background: #f3f3f5;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
+
 /* Blinking cursor for streaming token display */
 @keyframes blink {
   0%, 50% { opacity: 1; }
@@ -130,6 +172,12 @@ code, pre {
   to {
     stroke-dashoffset: -20;
   }
+}
+
+/* Hammer icon pulse glow */
+@keyframes hammer-pulse {
+  0%, 100% { opacity: 0.15; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.15); }
 }
 
 /* Skeleton shimmer */
@@ -161,6 +209,15 @@ code, pre {
     transparent 1px
   );
   background-size: 32px 32px;
+  background-position: 0 0;
+}
+
+[data-theme="light"] .bg-grid {
+  background-image: radial-gradient(
+    circle,
+    rgba(0, 0, 0, 0.04) 1px,
+    transparent 1px
+  );
 }
 
 /* Focus ring */
@@ -181,6 +238,16 @@ code, pre {
   outline: none;
   border-bottom-color: #FF6B00;
   box-shadow: 0 2px 10px rgba(255, 107, 0, 0.2);
+}
+
+[data-theme="light"] .neon-input {
+  background: rgba(255, 255, 255, 0.95);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="light"] .neon-input:focus {
+  border-bottom-color: #d45a00;
+  box-shadow: 0 2px 8px rgba(212, 90, 0, 0.1);
 }
 
 /* Markdown content styling */
@@ -268,4 +335,145 @@ code, pre {
   background: rgba(255, 107, 0, 0.08);
   font-family: var(--font-heading);
   font-size: 0.85em;
+}
+
+/* ──────── Markdown light mode ──────── */
+[data-theme="light"] .markdown-body {
+  color: #2d2d2d;
+}
+
+[data-theme="light"] .markdown-body h1,
+[data-theme="light"] .markdown-body h2,
+[data-theme="light"] .markdown-body h3 {
+  color: #b34a00;
+}
+
+[data-theme="light"] .markdown-body code {
+  background: rgba(0, 0, 0, 0.05);
+  color: #c04000;
+}
+
+[data-theme="light"] .markdown-body pre {
+  background: #f6f6f8 !important;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .markdown-body pre code {
+  color: inherit;
+}
+
+[data-theme="light"] .markdown-body a {
+  color: #c04000;
+}
+
+[data-theme="light"] .markdown-body blockquote {
+  color: #888888;
+  border-left-color: #d45a00;
+}
+
+[data-theme="light"] .markdown-body th,
+[data-theme="light"] .markdown-body td {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .markdown-body th {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+/* ──────── Mermaid diagram theme adaptation ──────── */
+
+/* Dark mode: ensure mermaid SVGs have proper text color */
+.markdown-body .mermaid-container text,
+.markdown-body .mermaid-container .nodeLabel,
+.markdown-body .mermaid-container .edgeLabel,
+.markdown-body .mermaid-container .label,
+.markdown-body .mermaid-container .cluster-label {
+  fill: #e8e8e8 !important;
+}
+
+.markdown-body .mermaid-container .messageText,
+.markdown-body .mermaid-container .loopText,
+.markdown-body .mermaid-container .labelText {
+  fill: #e8e8e8 !important;
+}
+
+/* Light mode: override mermaid SVG colors */
+[data-theme="light"] .markdown-body .mermaid-container text,
+[data-theme="light"] .markdown-body .mermaid-container .nodeLabel,
+[data-theme="light"] .markdown-body .mermaid-container .edgeLabel,
+[data-theme="light"] .markdown-body .mermaid-container .label,
+[data-theme="light"] .markdown-body .mermaid-container .cluster-label {
+  fill: #2d2d2d !important;
+}
+
+[data-theme="light"] .markdown-body .mermaid-container .messageText,
+[data-theme="light"] .markdown-body .mermaid-container .loopText,
+[data-theme="light"] .markdown-body .mermaid-container .labelText {
+  fill: #2d2d2d !important;
+}
+
+/* Light mode code syntax highlighting overrides */
+[data-theme="light"] .markdown-body pre {
+  color: #2d2d2d;
+}
+
+[data-theme="light"] .hljs {
+  background: #f6f6f8 !important;
+  color: #2d2d2d !important;
+}
+
+[data-theme="light"] .hljs-keyword,
+[data-theme="light"] .hljs-selector-tag,
+[data-theme="light"] .hljs-built_in {
+  color: #8b3fbd !important;
+}
+
+[data-theme="light"] .hljs-string,
+[data-theme="light"] .hljs-title.class_,
+[data-theme="light"] .hljs-section {
+  color: #0d7c3b !important;
+}
+
+[data-theme="light"] .hljs-attr,
+[data-theme="light"] .hljs-attribute {
+  color: #c04000 !important;
+}
+
+[data-theme="light"] .hljs-number,
+[data-theme="light"] .hljs-literal {
+  color: #0b69a3 !important;
+}
+
+[data-theme="light"] .hljs-comment {
+  color: #888888 !important;
+}
+
+[data-theme="light"] .hljs-type,
+[data-theme="light"] .hljs-title {
+  color: #b34a00 !important;
+}
+
+[data-theme="light"] .hljs-name,
+[data-theme="light"] .hljs-tag {
+  color: #d42020 !important;
+}
+
+/* Forge border glow — light mode */
+[data-theme="light"] .neon-border-cyan {
+  box-shadow: none;
+}
+
+[data-theme="light"] .neon-border-magenta {
+  box-shadow: none;
+}
+
+/* Skeleton shimmer — light mode */
+[data-theme="light"] .skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 107, 0, 0.04) 25%,
+    rgba(255, 107, 0, 0.08) 50%,
+    rgba(255, 107, 0, 0.04) 75%
+  );
+  background-size: 200% 100%;
 }

@@ -153,62 +153,91 @@ export interface NyxIDAuthConfig {
 }
 
 /**
+ * Shared auth verification logic. Extracts token and sets auth context.
+ * Returns true if auth was set, false if no token was present.
+ * Throws on invalid tokens.
+ */
+async function verifyAndSetAuth(
+  c: Context<{ Variables: AuthVariables }>,
+  config: NyxIDAuthConfig,
+): Promise<boolean> {
+  const extracted = extractToken(c);
+  if (!extracted) {
+    return false;
+  }
+
+  const { token, isApiKey } = extracted;
+
+  if (isApiKey) {
+    const result = await introspectApiKey(
+      token,
+      config.introspectionUrl,
+      config.clientId,
+      config.clientSecret,
+    );
+
+    if (!result.active) {
+      throw new AppError(401, "AUTH_INVALID_KEY", "Invalid or expired API key");
+    }
+
+    c.set("auth", {
+      userId: result.sub ?? "",
+      roles: result.roles ?? [],
+      permissions: result.permissions ?? [],
+    });
+    c.set("userToken", token);
+  } else {
+    const jwks = getJWKS(config.jwksUrl);
+
+    let verified: JWTVerifyResult;
+    try {
+      verified = await jwtVerify(token, jwks, {
+        issuer: config.issuer,
+        audience: config.audience,
+        algorithms: ["RS256"],
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Token verification failed";
+      logger.debug({ err: message }, "JWT verification failed");
+      throw new AppError(401, "AUTH_INVALID_TOKEN", "Invalid or expired token");
+    }
+
+    const claims = verified.payload as unknown as NyxIDTokenClaims;
+
+    c.set("auth", {
+      userId: claims.sub,
+      roles: claims.roles ?? [],
+      permissions: claims.permissions ?? [],
+    });
+    c.set("userToken", token);
+  }
+
+  return true;
+}
+
+/**
  * NyxID auth middleware. Verifies JWT using JWKS or API Key via introspection.
  * Sets auth context and raw user token on success.
+ * Throws 401 if no token is present or token is invalid.
  */
 export function nyxidAuthMiddleware(config: NyxIDAuthConfig) {
   return createMiddleware<{ Variables: AuthVariables }>(async (c, next) => {
-    const extracted = extractToken(c);
-    if (!extracted) {
+    const authenticated = await verifyAndSetAuth(c, config);
+    if (!authenticated) {
       throw new AppError(401, "AUTH_MISSING", "Missing authorization");
     }
+    await next();
+  });
+}
 
-    const { token, isApiKey } = extracted;
-
-    if (isApiKey) {
-      const result = await introspectApiKey(
-        token,
-        config.introspectionUrl,
-        config.clientId,
-        config.clientSecret,
-      );
-
-      if (!result.active) {
-        throw new AppError(401, "AUTH_INVALID_KEY", "Invalid or expired API key");
-      }
-
-      c.set("auth", {
-        userId: result.sub ?? "",
-        roles: result.roles ?? [],
-        permissions: result.permissions ?? [],
-      });
-      c.set("userToken", token);
-    } else {
-      const jwks = getJWKS(config.jwksUrl);
-
-      let verified: JWTVerifyResult;
-      try {
-        verified = await jwtVerify(token, jwks, {
-          issuer: config.issuer,
-          audience: config.audience,
-          algorithms: ["RS256"],
-        });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Token verification failed";
-        logger.debug({ err: message }, "JWT verification failed");
-        throw new AppError(401, "AUTH_INVALID_TOKEN", "Invalid or expired token");
-      }
-
-      const claims = verified.payload as unknown as NyxIDTokenClaims;
-
-      c.set("auth", {
-        userId: claims.sub,
-        roles: claims.roles ?? [],
-        permissions: claims.permissions ?? [],
-      });
-      c.set("userToken", token);
-    }
-
+/**
+ * Optional NyxID auth middleware. Sets auth context if a valid token is present,
+ * but allows anonymous access (no token → no auth context, no error).
+ * Still throws on INVALID tokens (malformed, expired, etc.).
+ */
+export function optionalAuthMiddleware(config: NyxIDAuthConfig) {
+  return createMiddleware<{ Variables: AuthVariables }>(async (c, next) => {
+    await verifyAndSetAuth(c, config);
     await next();
   });
 }

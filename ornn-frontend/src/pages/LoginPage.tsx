@@ -6,10 +6,12 @@
 
 import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/stores/authStore";
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -18,7 +20,7 @@ export function LoginPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      const redirectTo = (location.state as { from?: string })?.from || "/";
+      const redirectTo = (location.state as { from?: string })?.from || "/registry";
       navigate(redirectTo, { replace: true });
     }
   }, [isAuthenticated, navigate, location.state]);
@@ -43,12 +45,12 @@ export function LoginPage() {
         >
           {/* Logo */}
           <div className="mb-8 text-center">
-            <img src="/logo.png" alt="ORNN" className="mx-auto h-20 w-20 rounded-xl object-cover mb-4" />
+            <img src="/logo.png" alt="ORNN" className="mx-auto h-32 w-auto mb-4" />
             <h1 className="font-heading text-3xl font-bold tracking-widest text-neon-cyan neon-cyan">
               ORNN
             </h1>
             <p className="mt-2 font-body text-text-muted">
-              The Forge for AI Capabilities
+              {t("login.tagline")}
             </p>
           </div>
 
@@ -56,7 +58,7 @@ export function LoginPage() {
           <div className="glass rounded-xl p-8 border border-neon-cyan/20">
             <div className="text-center space-y-6">
               <p className="font-body text-text-primary">
-                Sign in with your NyxID account to access the platform.
+                {t("login.desc")}
               </p>
 
               <motion.button
@@ -67,14 +69,14 @@ export function LoginPage() {
                 transition={{ duration: 0.1, ease: "easeIn" }}
                 className="w-full glass cursor-pointer rounded-lg border border-neon-cyan/50 px-6 py-3.5 font-body text-base font-semibold text-neon-cyan transition-all duration-200 hover:border-neon-cyan hover:shadow-[0_0_20px_rgba(255,107,0,0.3)]"
               >
-                Login with NyxID
+                {t("login.loginBtn")}
               </motion.button>
             </div>
           </div>
 
           {/* Footer */}
           <p className="mt-8 text-center font-body text-xs text-text-muted">
-            By continuing, you agree to our Terms of Service and Privacy Policy.
+            {t("login.terms")}
           </p>
         </motion.div>
       </div>
