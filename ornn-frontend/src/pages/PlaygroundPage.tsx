@@ -145,9 +145,9 @@ export function PlaygroundPage() {
         {/* Two-column layout */}
         <div className="flex flex-1 min-h-0 gap-4">
           {/* Left: Chat (40%) */}
-          <div className="flex w-[40%] shrink-0 flex-col min-w-0 min-h-0">
+          <div className="flex w-[40%] shrink-0 flex-col min-w-0 min-h-0 rounded-lg border border-neon-cyan/10 bg-bg-elevated/30">
             {/* Clear Chat button inside chat panel */}
-            <div className="flex items-center justify-end px-2 py-1 shrink-0">
+            <div className="flex items-center justify-end px-3 py-1 shrink-0">
               <button
                 type="button"
                 onClick={clearChat}
@@ -156,7 +156,7 @@ export function PlaygroundPage() {
                 {t("playground.clearChat")}
               </button>
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto space-y-3 px-2 py-2">
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-3 px-3 py-2">
               {messages.length === 0 && !currentAssistantContent && (
                 <div className="flex flex-col items-center justify-center h-full text-center">
                   <p className="font-body text-sm text-text-muted max-w-sm">
@@ -213,7 +213,7 @@ export function PlaygroundPage() {
             </div>
 
             {/* Chat input */}
-            <div className="shrink-0 border-t border-neon-cyan/10">
+            <div className="shrink-0 border-t border-neon-cyan/10 px-1 pb-1">
               <ChatInput
                 onSend={handleSend}
                 onAbort={abort}

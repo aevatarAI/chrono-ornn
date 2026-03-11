@@ -1,13 +1,13 @@
 /**
  * NyxID authentication middleware.
- * Verifies JWT access tokens using NyxID JWKS (RSA256).
- * Supports API Key auth via NyxID introspection.
+ * Trusts identity headers injected by NyxID proxy (X-NyxID-User-*).
+ * All requests reach ornn through NyxID proxy which has already verified
+ * the user's access token.
  * @module middleware/nyxidAuth
  */
 
-import { createMiddleware } from "hono/factory";
-import { createRemoteJWKSet, jwtVerify, type JWTVerifyResult } from "jose";
 import type { Context, Next } from "hono";
+import { createMiddleware } from "hono/factory";
 import pino from "pino";
 
 const logger = pino({ level: "info" }).child({ module: "nyxidAuth" });
@@ -16,32 +16,15 @@ const logger = pino({ level: "info" }).child({ module: "nyxidAuth" });
 // Types
 // ---------------------------------------------------------------------------
 
-export interface NyxIDTokenClaims {
-  sub: string;
-  scope?: string;
-  roles: string[];
-  permissions: string[];
-  groups: string[];
-  token_type?: string;
-  exp: number;
-  iat: number;
-  jti: string;
-  iss: string;
-  aud: string;
-  delegated?: boolean;
-  sa?: boolean;
-  act?: { sub: string };
-}
-
 export interface AuthContext {
   userId: string;
+  email: string;
   roles: string[];
   permissions: string[];
 }
 
 export type AuthVariables = {
   auth: AuthContext;
-  userToken: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -60,184 +43,59 @@ class AppError extends Error {
 }
 
 // ---------------------------------------------------------------------------
-// JWKS Cache
+// Header parsing
 // ---------------------------------------------------------------------------
-
-let jwksInstance: ReturnType<typeof createRemoteJWKSet> | null = null;
-
-function getJWKS(jwksUrl: string): ReturnType<typeof createRemoteJWKSet> {
-  if (!jwksInstance) {
-    jwksInstance = createRemoteJWKSet(new URL(jwksUrl));
-    logger.info({ jwksUrl }, "Initialized JWKS remote key set");
-  }
-  return jwksInstance;
-}
-
-// ---------------------------------------------------------------------------
-// NyxID Introspection (for API Keys)
-// ---------------------------------------------------------------------------
-
-interface IntrospectionResult {
-  active: boolean;
-  sub?: string;
-  roles?: string[];
-  permissions?: string[];
-  groups?: string[];
-  scope?: string;
-}
-
-async function introspectApiKey(
-  apiKey: string,
-  introspectionUrl: string,
-  clientId: string,
-  clientSecret: string,
-): Promise<IntrospectionResult> {
-  const response = await fetch(introspectionUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "Authorization": `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
-    },
-    body: new URLSearchParams({
-      token: apiKey,
-      token_type_hint: "api_key",
-    }),
-  });
-
-  if (!response.ok) {
-    logger.error({ status: response.status }, "NyxID introspection request failed");
-    throw new AppError(503, "NYXID_INTROSPECTION_FAILED", "Failed to introspect API key");
-  }
-
-  return response.json() as Promise<IntrospectionResult>;
-}
-
-// ---------------------------------------------------------------------------
-// Token extraction
-// ---------------------------------------------------------------------------
-
-function extractToken(c: Context): { token: string; isApiKey: boolean } | null {
-  const authHeader = c.req.header("Authorization");
-  const apiKeyHeader = c.req.header("X-API-Key");
-
-  if (apiKeyHeader && apiKeyHeader.startsWith("nyx_")) {
-    return { token: apiKeyHeader, isApiKey: true };
-  }
-
-  if (authHeader) {
-    if (!authHeader.startsWith("Bearer ")) {
-      throw new AppError(401, "AUTH_INVALID_FORMAT", "Invalid authorization header format");
-    }
-    const token = authHeader.slice(7);
-    if (!token) {
-      throw new AppError(401, "AUTH_MISSING_TOKEN", "Missing token");
-    }
-    const isApiKey = token.startsWith("nyx_");
-    return { token, isApiKey };
-  }
-
-  return null;
-}
-
-// ---------------------------------------------------------------------------
-// Middleware Factories
-// ---------------------------------------------------------------------------
-
-export interface NyxIDAuthConfig {
-  jwksUrl: string;
-  issuer: string;
-  audience: string;
-  introspectionUrl: string;
-  clientId: string;
-  clientSecret: string;
-}
 
 /**
- * Shared auth verification logic. Extracts token and sets auth context.
- * Returns true if auth was set, false if no token was present.
- * Throws on invalid tokens.
+ * Extract auth context from NyxID proxy identity headers.
+ * Returns null if no identity headers are present (anonymous request).
  */
-async function verifyAndSetAuth(
-  c: Context<{ Variables: AuthVariables }>,
-  config: NyxIDAuthConfig,
-): Promise<boolean> {
-  const extracted = extractToken(c);
-  if (!extracted) {
-    return false;
+function extractAuthFromHeaders(c: Context): AuthContext | null {
+  const userId = c.req.header("X-NyxID-User-Id");
+  if (!userId) {
+    return null;
   }
 
-  const { token, isApiKey } = extracted;
+  const email = c.req.header("X-NyxID-User-Email") ?? "";
+  const rolesHeader = c.req.header("X-NyxID-User-Roles");
+  const permsHeader = c.req.header("X-NyxID-User-Permissions");
 
-  if (isApiKey) {
-    const result = await introspectApiKey(
-      token,
-      config.introspectionUrl,
-      config.clientId,
-      config.clientSecret,
-    );
+  const roles = rolesHeader ? rolesHeader.split(",").filter(Boolean) : [];
+  const permissions = permsHeader ? permsHeader.split(",").filter(Boolean) : [];
 
-    if (!result.active) {
-      throw new AppError(401, "AUTH_INVALID_KEY", "Invalid or expired API key");
-    }
-
-    c.set("auth", {
-      userId: result.sub ?? "",
-      roles: result.roles ?? [],
-      permissions: result.permissions ?? [],
-    });
-    c.set("userToken", token);
-  } else {
-    const jwks = getJWKS(config.jwksUrl);
-
-    let verified: JWTVerifyResult;
-    try {
-      verified = await jwtVerify(token, jwks, {
-        issuer: config.issuer,
-        audience: config.audience,
-        algorithms: ["RS256"],
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Token verification failed";
-      logger.debug({ err: message }, "JWT verification failed");
-      throw new AppError(401, "AUTH_INVALID_TOKEN", "Invalid or expired token");
-    }
-
-    const claims = verified.payload as unknown as NyxIDTokenClaims;
-
-    c.set("auth", {
-      userId: claims.sub,
-      roles: claims.roles ?? [],
-      permissions: claims.permissions ?? [],
-    });
-    c.set("userToken", token);
-  }
-
-  return true;
+  return { userId, email, roles, permissions };
 }
 
+// ---------------------------------------------------------------------------
+// Middleware
+// ---------------------------------------------------------------------------
+
 /**
- * NyxID auth middleware. Verifies JWT using JWKS or API Key via introspection.
- * Sets auth context and raw user token on success.
- * Throws 401 if no token is present or token is invalid.
+ * Required auth middleware.
+ * Reads identity from NyxID proxy headers. Throws 401 if no identity present.
  */
-export function nyxidAuthMiddleware(config: NyxIDAuthConfig) {
+export function nyxidAuthMiddleware() {
   return createMiddleware<{ Variables: AuthVariables }>(async (c, next) => {
-    const authenticated = await verifyAndSetAuth(c, config);
-    if (!authenticated) {
-      throw new AppError(401, "AUTH_MISSING", "Missing authorization");
+    const auth = extractAuthFromHeaders(c);
+    if (!auth) {
+      throw new AppError(401, "AUTH_MISSING", "Missing NyxID identity headers");
     }
+    logger.debug({ userId: auth.userId, email: auth.email }, "Authenticated via proxy headers");
+    c.set("auth", auth);
     await next();
   });
 }
 
 /**
- * Optional NyxID auth middleware. Sets auth context if a valid token is present,
- * but allows anonymous access (no token → no auth context, no error).
- * Still throws on INVALID tokens (malformed, expired, etc.).
+ * Optional auth middleware.
+ * Sets auth context if identity headers are present, allows anonymous otherwise.
  */
-export function optionalAuthMiddleware(config: NyxIDAuthConfig) {
+export function optionalAuthMiddleware() {
   return createMiddleware<{ Variables: AuthVariables }>(async (c, next) => {
-    await verifyAndSetAuth(c, config);
+    const auth = extractAuthFromHeaders(c);
+    if (auth) {
+      c.set("auth", auth);
+    }
     await next();
   });
 }
@@ -292,15 +150,4 @@ export function getAuth(c: Context<{ Variables: AuthVariables }>): AuthContext {
     throw new AppError(401, "AUTH_MISSING", "Not authenticated");
   }
   return auth;
-}
-
-/**
- * Helper to get the raw user token from request.
- */
-export function getUserToken(c: Context<{ Variables: AuthVariables }>): string {
-  const token = c.get("userToken");
-  if (!token) {
-    throw new AppError(401, "AUTH_MISSING", "Not authenticated");
-  }
-  return token;
 }

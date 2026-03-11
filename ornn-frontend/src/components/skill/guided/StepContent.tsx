@@ -8,12 +8,14 @@ import { Controller, type UseFormReturn } from "react-hook-form";
 import { motion } from "framer-motion";
 import { MarkdownEditor } from "@/components/form/MarkdownEditor";
 import type { ContentData } from "@/utils/skillCreateSchemas";
+import { useTranslation } from "react-i18next";
 
 export interface StepContentProps {
   form: UseFormReturn<ContentData>;
 }
 
 export function StepContent({ form }: StepContentProps) {
+  const { t } = useTranslation();
   return (
     <motion.div
       key="content"
@@ -23,11 +25,10 @@ export function StepContent({ form }: StepContentProps) {
       transition={{ duration: 0.2 }}
     >
       <h2 className="font-heading text-lg text-neon-cyan mb-6">
-        Skill Content
+        {t("guided.contentTitle")}
       </h2>
       <p className="font-body text-sm text-text-muted mb-4">
-        Write the body content for your SKILL.md. This will appear
-        below the auto-generated YAML frontmatter.
+        {t("guided.contentDesc")}
       </p>
 
       <Controller
@@ -35,10 +36,10 @@ export function StepContent({ form }: StepContentProps) {
         control={form.control}
         render={({ field }) => (
           <MarkdownEditor
-            label="SKILL.md Body"
+            label={t("guided.contentLabel")}
             value={field.value}
             onChange={field.onChange}
-            placeholder="# My Skill&#10;&#10;Describe what this skill does, how to use it, and provide examples..."
+            placeholder={t("guided.contentPlaceholder")}
             error={form.formState.errors.readmeMd?.message}
             minRows={15}
           />

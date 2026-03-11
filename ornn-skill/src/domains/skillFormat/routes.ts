@@ -9,7 +9,6 @@ import { Hono } from "hono";
 import type { SkillService } from "../skillCrud/service";
 import {
   type AuthVariables,
-  type NyxIDAuthConfig,
   nyxidAuthMiddleware,
   requirePermission,
 } from "../../middleware/nyxidAuth";
@@ -70,14 +69,13 @@ export const SKILL_FORMAT_RULES = `# Ornn Skill Package Format Rules
 
 export interface FormatRoutesConfig {
   skillService: SkillService;
-  authConfig: NyxIDAuthConfig;
 }
 
 export function createFormatRoutes(config: FormatRoutesConfig): Hono<{ Variables: AuthVariables }> {
-  const { skillService, authConfig } = config;
+  const { skillService } = config;
   const app = new Hono<{ Variables: AuthVariables }>();
 
-  const auth = nyxidAuthMiddleware(authConfig);
+  const auth = nyxidAuthMiddleware();
 
   /**
    * GET /skill-format/rules — Public endpoint, no auth required.

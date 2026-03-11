@@ -58,7 +58,6 @@ export class SkillGenerationService {
    */
   async *generateStream(
     query: string,
-    userToken: string,
     signal?: AbortSignal,
   ): AsyncIterable<SkillStreamEvent> {
     if (signal?.aborted) {
@@ -82,7 +81,6 @@ export class SkillGenerationService {
         input,
         max_output_tokens: this.maxOutputTokens,
         temperature: this.temperature,
-        userToken,
       });
 
       for await (const event of streamEvents) {
@@ -123,7 +121,6 @@ export class SkillGenerationService {
             input: retryInput,
             max_output_tokens: this.maxOutputTokens,
             temperature: this.temperature,
-            userToken,
           });
 
           let retryText = "";
@@ -160,7 +157,6 @@ export class SkillGenerationService {
    */
   async *generateStreamWithHistory(
     messages: Array<{ role: "user" | "assistant"; content: string }>,
-    userToken: string,
     signal?: AbortSignal,
   ): AsyncIterable<SkillStreamEvent> {
     if (signal?.aborted) {
@@ -196,7 +192,6 @@ export class SkillGenerationService {
         input,
         max_output_tokens: this.maxOutputTokens,
         temperature: this.temperature,
-        userToken,
       });
 
       for await (const event of streamEvents) {

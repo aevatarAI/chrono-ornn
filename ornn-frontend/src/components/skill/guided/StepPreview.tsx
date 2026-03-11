@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import { SkillPackagePreview } from "@/components/skill/SkillPackagePreview";
 import type { FileNode } from "@/components/editor/FileTree";
 import type { SkillMetadata } from "@/types/skillPackage";
+import { useTranslation } from "react-i18next";
 
 export interface StepPreviewProps {
   files: FileNode[];
@@ -17,6 +18,7 @@ export interface StepPreviewProps {
 }
 
 export function StepPreview({ files, fileContents, metadata, authorName }: StepPreviewProps) {
+  const { t } = useTranslation();
   return (
     <motion.div
       key="preview"
@@ -26,7 +28,7 @@ export function StepPreview({ files, fileContents, metadata, authorName }: StepP
       transition={{ duration: 0.2 }}
     >
       <h2 className="font-heading text-lg text-neon-cyan mb-6">
-        Review & Create
+        {t("guided.previewTitle")}
       </h2>
 
       <SkillPackagePreview

@@ -19,6 +19,7 @@ export interface SkillConfig {
   readonly nyxidIssuer: string;
   readonly nyxidAudience: string;
   readonly nyxidIntrospectionUrl: string;
+  readonly nyxidTokenUrl: string;
   readonly nyxidClientId: string;
   readonly nyxidClientSecret: string;
 
@@ -71,6 +72,7 @@ export function loadConfig(): SkillConfig {
     nyxidIssuer: requiredEnv("NYXID_ISSUER"),
     nyxidAudience: requiredEnv("NYXID_AUDIENCE"),
     nyxidIntrospectionUrl: requiredEnv("NYXID_INTROSPECTION_URL"),
+    nyxidTokenUrl: requiredEnv("NYXID_TOKEN_URL"),
     nyxidClientId: requiredEnv("NYXID_CLIENT_ID"),
     nyxidClientSecret: requiredEnv("NYXID_CLIENT_SECRET"),
 

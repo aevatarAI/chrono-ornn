@@ -19,6 +19,7 @@ import { MultiValueInput } from "@/components/form/MultiValueInput";
 import { SKILL_CATEGORY_INFO } from "@/utils/constants";
 import { OUTPUT_TYPES } from "@/utils/skillFrontmatterSchema";
 import type { BasicInfoData } from "@/utils/skillCreateSchemas";
+import { useTranslation } from "react-i18next";
 
 export interface StepBasicInfoProps {
   form: UseFormReturn<BasicInfoData>;
@@ -63,6 +64,7 @@ export function StepBasicInfo({
   showTools,
   showRuntimes,
 }: StepBasicInfoProps) {
+  const { t } = useTranslation();
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   return (
@@ -74,21 +76,21 @@ export function StepBasicInfo({
       transition={{ duration: 0.2 }}
     >
       <h2 className="font-heading text-lg text-neon-cyan mb-6">
-        Basic Information
+        {t("guided.basicTitle")}
       </h2>
       <form className="space-y-6">
         {/* Name */}
         <Input
-          label="Skill Name"
-          placeholder="my-awesome-skill"
+          label={t("guided.skillName")}
+          placeholder={t("guided.skillNamePlaceholder")}
           error={form.formState.errors.name?.message}
           {...form.register("name")}
         />
 
         {/* Description */}
         <Input
-          label="Description"
-          placeholder="A brief description of what this skill does (min 10 chars)"
+          label={t("guided.descLabel")}
+          placeholder={t("guided.descPlaceholder")}
           error={form.formState.errors.description?.message}
           {...form.register("description")}
         />
@@ -101,9 +103,9 @@ export function StepBasicInfo({
               control={form.control}
               render={({ field }) => (
                 <Select
-                  label="Category"
+                  label={t("guided.categoryLabel")}
                   options={categoryOptions}
-                  placeholder="Select category"
+                  placeholder={t("guided.selectCategory")}
                   error={
                     form.formState.errors.metadata?.category?.message
                   }
@@ -124,12 +126,12 @@ export function StepBasicInfo({
             control={form.control}
             render={({ field }) => (
               <Select
-                label="Output Type"
-                options={OUTPUT_TYPES.map((t) => ({
-                  value: t,
-                  label: t === "text" ? "Text (stdout)" : "File (artifact)",
+                label={t("guided.outputType")}
+                options={OUTPUT_TYPES.map((ot) => ({
+                  value: ot,
+                  label: ot === "text" ? t("guided.textStdout") : t("guided.fileArtifact"),
                 }))}
-                placeholder="Select output type"
+                placeholder={t("guided.selectOutputType")}
                 error={
                   form.formState.errors.metadata?.outputType?.message
                 }
@@ -181,11 +183,11 @@ export function StepBasicInfo({
             control={form.control}
             render={({ field }) => (
               <MultiValueInput
-                label="Runtime Dependencies (optional)"
+                label={t("guided.runtimeDeps")}
                 values={field.value}
                 onChange={field.onChange}
-                placeholder="npm package name + Enter"
-                helperText="npm packages required by runtime scripts (e.g., axios, lodash)"
+                placeholder={t("guided.runtimeDepsPlaceholder")}
+                helperText={t("guided.runtimeDepsHelper")}
                 badgeColor="magenta"
               />
             )}
@@ -199,16 +201,16 @@ export function StepBasicInfo({
             control={form.control}
             render={({ field }) => (
               <MultiValueInput
-                label="Environment Variables (optional)"
+                label={t("guided.envVars")}
                 values={field.value}
                 onChange={field.onChange}
-                placeholder="ENV_VAR_NAME + Enter"
-                helperText="Must be UPPER_SNAKE_CASE (e.g., API_KEY, SECRET_TOKEN)"
+                placeholder={t("guided.envVarsPlaceholder")}
+                helperText={t("guided.envVarsHelper")}
                 badgeColor="yellow"
                 validate={(v) =>
                   /^[A-Z_][A-Z0-9_]*$/.test(v)
                     ? null
-                    : "Must be UPPER_SNAKE_CASE"
+                    : t("guided.envVarsValidation")
                 }
               />
             )}
@@ -230,15 +232,15 @@ export function StepBasicInfo({
 
         {/* License */}
         <Input
-          label="License (optional)"
-          placeholder="MIT, Apache-2.0, etc."
+          label={t("guided.license")}
+          placeholder={t("guided.licensePlaceholder")}
           {...form.register("license")}
         />
 
         {/* Compatibility */}
         <Input
-          label="Compatibility (optional)"
-          placeholder="claude-code >= 1.0"
+          label={t("guided.compatibilityLabel")}
+          placeholder={t("guided.compatibilityPlaceholder")}
           error={form.formState.errors.compatibility?.message}
           {...form.register("compatibility")}
         />
@@ -251,7 +253,7 @@ export function StepBasicInfo({
             className="flex w-full items-center justify-between py-2 text-left cursor-pointer group"
           >
             <span className="font-heading text-xs uppercase tracking-wider text-text-muted group-hover:text-neon-cyan transition-colors">
-              Advanced Settings (Claude)
+              {t("guided.advancedSettings")}
             </span>
             <ChevronIcon
               expanded={showAdvanced}
@@ -283,11 +285,10 @@ export function StepBasicInfo({
                         />
                         <div>
                           <span className="font-body text-sm text-text-primary group-hover:text-neon-cyan transition-colors">
-                            Disable Model Invocation
+                            {t("guided.disableModelInvocation")}
                           </span>
                           <p className="font-body text-xs text-text-muted mt-0.5">
-                            Prevent the AI from invoking this skill as a
-                            sub-model call
+                            {t("guided.disableModelInvocationDesc")}
                           </p>
                         </div>
                       </label>
@@ -308,10 +309,10 @@ export function StepBasicInfo({
                         />
                         <div>
                           <span className="font-body text-sm text-text-primary group-hover:text-neon-cyan transition-colors">
-                            User Invocable
+                            {t("guided.userInvocable")}
                           </span>
                           <p className="font-body text-xs text-text-muted mt-0.5">
-                            Allow users to directly invoke this skill
+                            {t("guided.userInvocableDesc")}
                           </p>
                         </div>
                       </label>
@@ -324,11 +325,11 @@ export function StepBasicInfo({
                     control={form.control}
                     render={({ field }) => (
                       <MultiValueInput
-                        label="Allowed Tools"
+                        label={t("guided.allowedTools")}
                         values={field.value}
                         onChange={field.onChange}
-                        placeholder="Tool name + Enter"
-                        helperText="Tools this skill is allowed to use (Claude spec)"
+                        placeholder={t("guided.allowedToolsPlaceholder")}
+                        helperText={t("guided.allowedToolsHelper")}
                         badgeColor="cyan"
                       />
                     )}
@@ -336,8 +337,8 @@ export function StepBasicInfo({
 
                   {/* Model */}
                   <Input
-                    label="Model"
-                    placeholder="claude-sonnet-4-20250514"
+                    label={t("guided.modelLabel")}
+                    placeholder={t("guided.modelPlaceholder")}
                     {...form.register("model")}
                   />
 
@@ -347,11 +348,11 @@ export function StepBasicInfo({
                     control={form.control}
                     render={({ field }) => (
                       <MultiValueInput
-                        label="Context Paths"
+                        label={t("guided.contextPaths")}
                         values={field.value}
                         onChange={field.onChange}
-                        placeholder="./path/to/file + Enter"
-                        helperText="File paths to include as context for the skill"
+                        placeholder={t("guided.contextPathsPlaceholder")}
+                        helperText={t("guided.contextPathsHelper")}
                         badgeColor="green"
                       />
                     )}
@@ -359,15 +360,15 @@ export function StepBasicInfo({
 
                   {/* Agent */}
                   <Input
-                    label="Agent"
-                    placeholder="agent-identifier"
+                    label={t("guided.agentLabel")}
+                    placeholder={t("guided.agentPlaceholder")}
                     {...form.register("agent")}
                   />
 
                   {/* Argument Hint */}
                   <Input
-                    label="Argument Hint"
-                    placeholder="Provide a file path or URL"
+                    label={t("guided.argumentHint")}
+                    placeholder={t("guided.argumentHintPlaceholder")}
                     {...form.register("argumentHint")}
                   />
                 </div>

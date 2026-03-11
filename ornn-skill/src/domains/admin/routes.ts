@@ -13,7 +13,6 @@ import type { SkillRepository } from "../skillCrud/repository";
 import type { SkillService } from "../skillCrud/service";
 import {
   type AuthVariables,
-  type NyxIDAuthConfig,
   nyxidAuthMiddleware,
   requirePermission,
   getAuth,
@@ -44,14 +43,13 @@ export interface AdminRoutesConfig {
   activityRepo: ActivityRepository;
   skillRepo: SkillRepository;
   skillService: SkillService;
-  authConfig: NyxIDAuthConfig;
 }
 
 export function createAdminRoutes(config: AdminRoutesConfig): Hono<{ Variables: AuthVariables }> {
-  const { adminService, activityRepo, skillRepo, skillService, authConfig } = config;
+  const { adminService, activityRepo, skillRepo, skillService } = config;
   const app = new Hono<{ Variables: AuthVariables }>();
 
-  const auth = nyxidAuthMiddleware(authConfig);
+  const auth = nyxidAuthMiddleware();
 
   // Activity logging endpoint — any authenticated user can log their own login
   app.post("/activity/login", auth, async (c) => {

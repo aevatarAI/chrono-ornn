@@ -158,7 +158,6 @@ export class PlaygroundChatService {
   async *chat(
     userId: string,
     request: PlaygroundChatRequest,
-    userToken: string,
     abortSignal?: AbortSignal,
   ): AsyncGenerator<PlaygroundChatEvent> {
     const input = this.buildInput(request);
@@ -197,7 +196,6 @@ export class PlaygroundChatService {
           max_output_tokens: this.maxOutputTokens,
           temperature: this.temperature,
           tools: PLAYGROUND_TOOLS,
-          userToken,
         });
 
         let pendingToolCall: { id: string; name: string; args: Record<string, unknown> } | null = null;

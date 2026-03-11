@@ -9,6 +9,7 @@ import { useState, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { UPLOADABLE_FOLDERS, type UploadableFolder } from "@/types/skillPackage";
 import { formatFileSize } from "@/utils/formatters";
+import { useTranslation } from "react-i18next";
 
 export interface FolderFileUploadProps {
   /** Map of folder -> files */
@@ -33,6 +34,7 @@ export function FolderFileUpload({
   onRemove,
   className = "",
 }: FolderFileUploadProps) {
+  const { t } = useTranslation();
   const [selectedFolder, setSelectedFolder] = useState<UploadableFolder>("scripts");
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -102,7 +104,7 @@ export function FolderFileUpload({
           `}
         >
           <p className="font-body text-sm text-text-muted">
-            Drop file here or click to browse
+            {t("guided.dropHint")}
           </p>
         </motion.div>
         <input
@@ -128,7 +130,7 @@ export function FolderFileUpload({
               </p>
               {folderFiles.length === 0 ? (
                 <p className="font-body text-xs text-text-muted/50 pl-4">
-                  (no files)
+                  {t("guided.noFiles")}
                 </p>
               ) : (
                 <div className="space-y-1">
@@ -148,7 +150,7 @@ export function FolderFileUpload({
                         onClick={() => onRemove(folder, index)}
                         className="text-text-muted hover:text-neon-red transition-colors text-xs cursor-pointer shrink-0"
                       >
-                        Remove
+                        {t("guided.remove")}
                       </button>
                     </div>
                   ))}

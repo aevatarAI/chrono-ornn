@@ -28,7 +28,7 @@ import { CreateSkillFreePage } from "@/pages/CreateSkillFreePage";
 import { CreateSkillGenerativePage } from "@/pages/CreateSkillGenerativePage";
 import { EditSkillPage } from "@/pages/EditSkillPage";
 import { PlaygroundPage } from "@/pages/PlaygroundPage";
-import { SettingsPage } from "@/pages/SettingsPage";
+
 import { MySkillsPage } from "@/pages/MySkillsPage";
 
 // Admin pages
@@ -78,7 +78,7 @@ export function App() {
                 <Route path="/skills/new/generate" element={<CreateSkillGenerativePage />} />
                 <Route path="/skills/:id/edit" element={<EditSkillPage />} />
                 <Route path="/playground" element={<PlaygroundPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
+
                 <Route path="/my-skills" element={<MySkillsPage />} />
               </Route>
 

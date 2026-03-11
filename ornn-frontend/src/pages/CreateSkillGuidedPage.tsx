@@ -308,10 +308,10 @@ export function CreateSkillGuidedPage() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="neon-cyan mb-2 font-heading text-2xl font-bold tracking-wider text-neon-cyan sm:text-3xl">
-            CREATE SKILL
+            {t("guided.header")}
           </h1>
           <p className="font-body text-text-muted">
-            Follow the steps below to create a new skill
+            {t("guided.headerDesc")}
           </p>
         </div>
 

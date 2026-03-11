@@ -10,11 +10,9 @@ import { z } from "zod";
 import type { PlaygroundChatService, PlaygroundChatRequest } from "./chatService";
 import {
   type AuthVariables,
-  type NyxIDAuthConfig,
   nyxidAuthMiddleware,
   requirePermission,
   getAuth,
-  getUserToken,
 } from "../../middleware/nyxidAuth";
 import { AppError } from "../../shared/types/index";
 import pino from "pino";
@@ -41,15 +39,14 @@ const chatRequestSchema = z.object({
 
 export interface PlaygroundRoutesConfig {
   chatService: PlaygroundChatService;
-  authConfig: NyxIDAuthConfig;
   keepAliveIntervalMs: number;
 }
 
 export function createPlaygroundRoutes(config: PlaygroundRoutesConfig): Hono<{ Variables: AuthVariables }> {
-  const { chatService, authConfig, keepAliveIntervalMs } = config;
+  const { chatService, keepAliveIntervalMs } = config;
   const app = new Hono<{ Variables: AuthVariables }>();
 
-  const auth = nyxidAuthMiddleware(authConfig);
+  const auth = nyxidAuthMiddleware();
 
   // All playground routes require auth + playground permission
   app.use("/playground/*", auth);
@@ -63,7 +60,6 @@ export function createPlaygroundRoutes(config: PlaygroundRoutesConfig): Hono<{ V
     requirePermission("ornn:playground:use"),
     async (c) => {
       const authCtx = getAuth(c);
-      const userToken = getUserToken(c);
       const body = await c.req.json();
       const parsed = chatRequestSchema.safeParse(body);
       if (!parsed.success) {
@@ -88,7 +84,7 @@ export function createPlaygroundRoutes(config: PlaygroundRoutesConfig): Hono<{ V
           const signal = c.req.raw.signal;
           const chatRequest: PlaygroundChatRequest = parsed.data;
 
-          for await (const event of chatService.chat(authCtx.userId, chatRequest, userToken, signal)) {
+          for await (const event of chatService.chat(authCtx.userId, chatRequest, signal)) {
             await stream.writeSSE({ data: JSON.stringify(event) });
           }
         } catch (err) {

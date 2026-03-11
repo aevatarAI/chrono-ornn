@@ -69,7 +69,7 @@ export function ChatInput({
   const canSend = value.trim().length > 0 && !disabled;
 
   return (
-    <div className="border-t border-neon-cyan/10 px-4 pb-4 pt-2">
+    <div className="px-2 pb-2 pt-2">
       {/* Model selector */}
       <div className="mb-2 flex items-center gap-2">
         <label className="font-heading text-[10px] uppercase tracking-wider text-text-muted">

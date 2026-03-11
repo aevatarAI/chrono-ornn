@@ -7,6 +7,7 @@
 import { motion } from "framer-motion";
 import { FolderFileUpload } from "@/components/form/FolderFileUpload";
 import type { UploadableFolder } from "@/types/skillPackage";
+import { useTranslation } from "react-i18next";
 
 export interface StepFilesProps {
   folderFiles: Map<UploadableFolder, File[]>;
@@ -15,6 +16,7 @@ export interface StepFilesProps {
 }
 
 export function StepFiles({ folderFiles, onUpload, onRemove }: StepFilesProps) {
+  const { t } = useTranslation();
   return (
     <motion.div
       key="files"
@@ -24,12 +26,10 @@ export function StepFiles({ folderFiles, onUpload, onRemove }: StepFilesProps) {
       transition={{ duration: 0.2 }}
     >
       <h2 className="font-heading text-lg text-neon-cyan mb-6">
-        Supporting Files (Optional)
+        {t("guided.filesTitle")}
       </h2>
       <p className="font-body text-sm text-text-muted mb-4">
-        Upload script files, reference docs, or assets to specific
-        folders. SKILL.md is auto-generated from your metadata and
-        content.
+        {t("guided.filesDesc")}
       </p>
 
       <FolderFileUpload

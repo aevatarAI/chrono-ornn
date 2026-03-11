@@ -10,7 +10,6 @@ import { cors } from "hono/cors";
 import { join } from "node:path";
 import pino from "pino";
 import type { SkillConfig } from "./infra/config";
-import type { NyxIDAuthConfig } from "./middleware/nyxidAuth";
 
 // Infrastructure
 import { connectMongo, type MongoConnection } from "./infra/db/mongodb";
@@ -78,16 +77,6 @@ export async function bootstrap(config: SkillConfig): Promise<BootstrapResult> {
 
   logger.info("Bootstrapping ornn-skill service...");
 
-  // ---- NyxID Auth Config ----
-  const authConfig: NyxIDAuthConfig = {
-    jwksUrl: config.nyxidJwksUrl,
-    issuer: config.nyxidIssuer,
-    audience: config.nyxidAudience,
-    introspectionUrl: config.nyxidIntrospectionUrl,
-    clientId: config.nyxidClientId,
-    clientSecret: config.nyxidClientSecret,
-  };
-
   // ---- Database Connections ----
   const mongo: MongoConnection = await connectMongo(config.mongodbUri, config.mongodbDb);
   const db = mongo.db;
@@ -96,7 +85,12 @@ export async function bootstrap(config: SkillConfig): Promise<BootstrapResult> {
   // ---- External Clients ----
   const storageClient = new StorageClient(config.storageServiceUrl);
   const sandboxClient = new SandboxClient(config.sandboxServiceUrl);
-  const nyxLlmClient = new NyxLlmClient(config.nyxLlmGatewayUrl);
+  const nyxLlmClient = new NyxLlmClient({
+    gatewayUrl: config.nyxLlmGatewayUrl,
+    tokenUrl: config.nyxidTokenUrl,
+    clientId: config.nyxidClientId,
+    clientSecret: config.nyxidClientSecret,
+  });
 
   // ---- Repositories ----
   const skillRepo = new SkillRepository(db);
@@ -114,7 +108,6 @@ export async function bootstrap(config: SkillConfig): Promise<BootstrapResult> {
   const skillRoutes = createSkillRoutes({
     skillService,
     skillRepo,
-    authConfig,
     maxFileSize: config.maxPackageSizeBytes,
     activityRepo,
   });
@@ -128,7 +121,6 @@ export async function bootstrap(config: SkillConfig): Promise<BootstrapResult> {
 
   const searchRoutes = createSearchRoutes({
     searchService,
-    authConfig,
   });
 
   // ---- Domain: Skill Generation ----
@@ -141,7 +133,6 @@ export async function bootstrap(config: SkillConfig): Promise<BootstrapResult> {
 
   const generationRoutes = createGenerationRoutes({
     generationService,
-    authConfig,
     keepAliveIntervalMs: config.sseKeepAliveIntervalMs,
   });
 
@@ -157,7 +148,6 @@ export async function bootstrap(config: SkillConfig): Promise<BootstrapResult> {
 
   const playgroundRoutes = createPlaygroundRoutes({
     chatService,
-    authConfig,
     keepAliveIntervalMs: config.sseKeepAliveIntervalMs,
   });
 
@@ -168,13 +158,11 @@ export async function bootstrap(config: SkillConfig): Promise<BootstrapResult> {
     activityRepo,
     skillRepo,
     skillService,
-    authConfig,
   });
 
   // ---- Domain: Skill Format ----
   const formatRoutes = createFormatRoutes({
     skillService,
-    authConfig,
   });
 
   // ---- Domain: Docs ----

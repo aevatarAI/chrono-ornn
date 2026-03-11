@@ -9,7 +9,6 @@ import { z } from "zod";
 import type { SearchService } from "./service";
 import {
   type AuthVariables,
-  type NyxIDAuthConfig,
   optionalAuthMiddleware,
 } from "../../middleware/nyxidAuth";
 import { AppError } from "../../shared/types/index";
@@ -28,14 +27,13 @@ const searchQuerySchema = z.object({
 
 export interface SearchRoutesConfig {
   searchService: SearchService;
-  authConfig: NyxIDAuthConfig;
 }
 
 export function createSearchRoutes(config: SearchRoutesConfig): Hono<{ Variables: AuthVariables }> {
-  const { searchService, authConfig } = config;
+  const { searchService } = config;
   const app = new Hono<{ Variables: AuthVariables }>();
 
-  const optionalAuth = optionalAuthMiddleware(authConfig);
+  const optionalAuth = optionalAuthMiddleware();
 
   /**
    * GET /skill-search — Unified search endpoint.
@@ -89,10 +87,6 @@ export function createSearchRoutes(config: SearchRoutesConfig): Hono<{ Variables
 
       logger.debug({ mode, scope, query: query.slice(0, 50), userId: currentUserId, anonymous: isAnonymous }, "Search request");
 
-      // Extract bearer token for LLM passthrough (semantic search)
-      const authHeader = c.req.header("Authorization") ?? "";
-      const userToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-
       const response = await searchService.search({
         query,
         mode,
@@ -100,7 +94,6 @@ export function createSearchRoutes(config: SearchRoutesConfig): Hono<{ Variables
         page,
         pageSize,
         currentUserId,
-        userToken,
         model,
       });
 

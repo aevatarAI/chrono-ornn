@@ -134,21 +134,14 @@ export function CreateSkillGenerativePage() {
             <ArrowLeftIcon className="h-4 w-4" />
             <span className="font-body text-sm">{t("generative.backToModes")}</span>
           </Link>
-          <div className="flex items-center gap-2">
-            <SparkleIcon className="h-6 w-6 text-neon-yellow" />
-            <h1 className="font-heading text-lg font-bold tracking-wider text-neon-yellow">
-              {t("generative.title")}
-            </h1>
-          </div>
-          <div className="w-32" /> {/* Spacer for centering */}
         </div>
 
         {/* Main two-column layout — left chat narrower, right preview wider */}
         <div className="flex flex-1 min-h-0 gap-4 pb-2">
           {/* Left: Chat panel (35%) */}
-          <div className="flex w-[35%] shrink-0 flex-col min-w-0 min-h-0">
+          <div className="flex w-[35%] shrink-0 flex-col min-w-0 min-h-0 rounded-lg border border-neon-cyan/10 bg-bg-elevated/30">
             {/* Chat messages area — scrolls independently */}
-            <div className="flex-1 min-h-0 overflow-y-auto space-y-4 px-2 py-2">
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-4 px-3 py-3">
               {!hasMessages && (
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -173,7 +166,7 @@ export function CreateSkillGenerativePage() {
             </div>
 
             {/* Chat input (fixed at bottom) */}
-            <div className="shrink-0 border-t border-neon-cyan/10">
+            <div className="shrink-0 border-t border-neon-cyan/10 px-1 pb-1">
               <ChatInput
                 onSend={generation.sendMessage}
                 onAbort={generation.abort}

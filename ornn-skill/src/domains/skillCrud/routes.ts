@@ -13,7 +13,6 @@ import type { SkillRepository } from "./repository";
 import type { ActivityRepository } from "../admin/activityRepository";
 import {
   type AuthVariables,
-  type NyxIDAuthConfig,
   nyxidAuthMiddleware,
   optionalAuthMiddleware,
   requirePermission,
@@ -28,17 +27,16 @@ const logger = pino({ level: "info" }).child({ module: "skillCrudRoutes" });
 export interface SkillRoutesConfig {
   skillService: SkillService;
   skillRepo: SkillRepository;
-  authConfig: NyxIDAuthConfig;
   maxFileSize: number;
   activityRepo?: ActivityRepository;
 }
 
 export function createSkillRoutes(config: SkillRoutesConfig): Hono<{ Variables: AuthVariables }> {
-  const { skillService, skillRepo, authConfig, maxFileSize, activityRepo } = config;
+  const { skillService, skillRepo, maxFileSize, activityRepo } = config;
   const app = new Hono<{ Variables: AuthVariables }>();
 
-  const auth = nyxidAuthMiddleware(authConfig);
-  const optionalAuth = optionalAuthMiddleware(authConfig);
+  const auth = nyxidAuthMiddleware();
+  const optionalAuth = optionalAuthMiddleware();
 
   /**
    * POST /skills — Create a new skill from a ZIP package.

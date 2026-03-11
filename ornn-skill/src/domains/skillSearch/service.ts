@@ -38,7 +38,6 @@ export class SearchService {
     page: number;
     pageSize: number;
     currentUserId: string;
-    userToken: string;
     model?: string;
   }): Promise<SkillSearchResponse> {
     const { query, mode, scope, page, pageSize, currentUserId } = params;
@@ -62,7 +61,6 @@ export class SearchService {
         query,
         scope,
         currentUserId,
-        userToken: params.userToken,
         model: params.model ?? this.defaultModel,
         page,
         pageSize,
@@ -109,12 +107,11 @@ export class SearchService {
     query: string;
     scope: "public" | "private" | "mixed";
     currentUserId: string;
-    userToken: string;
     model: string;
     page: number;
     pageSize: number;
   }): Promise<{ skills: SkillDocument[]; total: number }> {
-    const { query, scope, currentUserId, userToken, model, page, pageSize } = params;
+    const { query, scope, currentUserId, model, page, pageSize } = params;
 
     // Load all skills matching scope (no pagination — we need all of them)
     const allSkills = await this.skillRepo.findAllByScope(scope, currentUserId);
@@ -130,7 +127,7 @@ export class SearchService {
 
     for (let i = 0; i < allSkills.length; i += BATCH_SIZE) {
       const batch = allSkills.slice(i, i + BATCH_SIZE);
-      const batchResults = await this.evaluateBatch(batch, query, userToken, model);
+      const batchResults = await this.evaluateBatch(batch, query, model);
       candidates.push(...batchResults);
     }
 
@@ -218,7 +215,6 @@ export class SearchService {
   private async evaluateBatch(
     batch: SkillDocument[],
     query: string,
-    userToken: string,
     model: string,
   ): Promise<Array<{ guid: string; score: number; reason: string }>> {
     const skillList = batch.map((s) => this.buildSkillSummary(s));
@@ -249,7 +245,6 @@ ${JSON.stringify(skillList, null, 2)}`;
         instructions: "You are a precise skill search ranking engine. Output only valid JSON. No markdown, no code blocks, just the JSON array.",
         max_output_tokens: 4096,
         temperature: 0.1,
-        userToken,
       });
 
       // Extract text from Responses API output

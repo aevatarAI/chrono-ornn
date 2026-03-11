@@ -1,6 +1,7 @@
 /**
  * HTTP client for Nyx Provider LLM Gateway (Responses API format).
  * All LLM calls (skill generation + playground chat) go through this client.
+ * Authenticates using a Service Account (SA) token obtained via client_credentials grant.
  * @module clients/nyxLlmClient
  */
 
@@ -49,7 +50,6 @@ export interface NyxLlmStreamParams {
   max_output_tokens?: number;
   temperature?: number;
   tools?: ResponsesApiTool[];
-  userToken: string;
 }
 
 export interface NyxLlmCompleteParams {
@@ -59,7 +59,15 @@ export interface NyxLlmCompleteParams {
   max_output_tokens?: number;
   temperature?: number;
   tools?: ResponsesApiTool[];
-  userToken: string;
+}
+
+// ---------------------------------------------------------------------------
+// SA Token Cache
+// ---------------------------------------------------------------------------
+
+interface CachedToken {
+  accessToken: string;
+  expiresAt: number; // epoch ms
 }
 
 // ---------------------------------------------------------------------------
@@ -139,9 +147,78 @@ async function* parseSSEStream(
 // Client
 // ---------------------------------------------------------------------------
 
+export interface NyxLlmClientConfig {
+  gatewayUrl: string;
+  tokenUrl: string;
+  clientId: string;
+  clientSecret: string;
+}
+
 export class NyxLlmClient {
-  constructor(private readonly gatewayUrl: string) {
-    logger.info({ gatewayUrl }, "NyxLlmClient initialized");
+  private readonly gatewayUrl: string;
+  private readonly tokenUrl: string;
+  private readonly clientId: string;
+  private readonly clientSecret: string;
+  private cachedToken: CachedToken | null = null;
+
+  constructor(config: NyxLlmClientConfig) {
+    this.gatewayUrl = config.gatewayUrl;
+    this.tokenUrl = config.tokenUrl;
+    this.clientId = config.clientId;
+    this.clientSecret = config.clientSecret;
+    logger.info({ gatewayUrl: config.gatewayUrl, tokenUrl: config.tokenUrl }, "NyxLlmClient initialized with SA credentials");
+  }
+
+  /**
+   * Get a valid SA access token, refreshing if expired or about to expire.
+   * Caches the token and refreshes 60s before expiry.
+   */
+  private async getAccessToken(): Promise<string> {
+    const now = Date.now();
+    // Return cached token if still valid (with 60s buffer)
+    if (this.cachedToken && this.cachedToken.expiresAt > now + 60_000) {
+      return this.cachedToken.accessToken;
+    }
+
+    logger.info("Acquiring new SA access token via client_credentials grant");
+
+    const body = new URLSearchParams({
+      grant_type: "client_credentials",
+      client_id: this.clientId,
+      client_secret: this.clientSecret,
+    });
+
+    const response = await fetch(this.tokenUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "");
+      const msg = `SA token acquisition failed (${response.status}): ${errText.slice(0, 200)}`;
+      logger.error({ status: response.status }, msg);
+      throw new Error(msg);
+    }
+
+    const result = (await response.json()) as {
+      access_token: string;
+      expires_in?: number;
+      token_type?: string;
+    };
+
+    if (!result.access_token) {
+      throw new Error("SA token response missing access_token");
+    }
+
+    const expiresInMs = (result.expires_in ?? 900) * 1000;
+    this.cachedToken = {
+      accessToken: result.access_token,
+      expiresAt: now + expiresInMs,
+    };
+
+    logger.info({ expiresInSecs: result.expires_in ?? 900 }, "SA access token acquired");
+    return this.cachedToken.accessToken;
   }
 
   /**
@@ -149,6 +226,7 @@ export class NyxLlmClient {
    * Returns an AsyncIterable of SSE events.
    */
   async *stream(params: NyxLlmStreamParams): AsyncIterable<ResponsesApiStreamEvent> {
+    const token = await this.getAccessToken();
     logger.info({ model: params.model }, "Starting LLM stream request");
 
     const body: Record<string, unknown> = {
@@ -170,7 +248,7 @@ export class NyxLlmClient {
     const response = await fetch(`${this.gatewayUrl}/responses`, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${params.userToken}`,
+        "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
@@ -196,6 +274,7 @@ export class NyxLlmClient {
    * Returns the output array from the response.
    */
   async complete(params: NyxLlmCompleteParams): Promise<ResponsesApiOutput[]> {
+    const token = await this.getAccessToken();
     logger.info({ model: params.model }, "Starting LLM complete request");
 
     const body: Record<string, unknown> = {
@@ -217,7 +296,7 @@ export class NyxLlmClient {
     const response = await fetch(`${this.gatewayUrl}/responses`, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${params.userToken}`,
+        "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),

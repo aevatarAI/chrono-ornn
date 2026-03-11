@@ -9,11 +9,9 @@ import { streamSSE } from "hono/streaming";
 import type { SkillGenerationService } from "./service";
 import {
   type AuthVariables,
-  type NyxIDAuthConfig,
   nyxidAuthMiddleware,
   requirePermission,
   getAuth,
-  getUserToken,
 } from "../../middleware/nyxidAuth";
 import { AppError } from "../../shared/types/index";
 import { resolveZipRoot } from "../../shared/utils/zip";
@@ -24,7 +22,6 @@ const logger = pino({ level: "info" }).child({ module: "skillGenerationRoutes" }
 
 export interface GenerationRoutesConfig {
   generationService: SkillGenerationService;
-  authConfig: NyxIDAuthConfig;
   keepAliveIntervalMs: number;
 }
 
@@ -104,10 +101,10 @@ async function analyzePackageContent(zipBuffer: Uint8Array): Promise<string> {
 }
 
 export function createGenerationRoutes(config: GenerationRoutesConfig): Hono<{ Variables: AuthVariables }> {
-  const { generationService, authConfig, keepAliveIntervalMs } = config;
+  const { generationService, keepAliveIntervalMs } = config;
   const app = new Hono<{ Variables: AuthVariables }>();
 
-  const auth = nyxidAuthMiddleware(authConfig);
+  const auth = nyxidAuthMiddleware();
 
   /**
    * POST /skills/generate
@@ -122,7 +119,6 @@ export function createGenerationRoutes(config: GenerationRoutesConfig): Hono<{ V
     async (c) => {
       const contentType = c.req.header("content-type") ?? "";
       const authCtx = getAuth(c);
-      const userToken = getUserToken(c);
       let prompt = "";
       let packageContent: string | null = null;
 
@@ -147,7 +143,7 @@ export function createGenerationRoutes(config: GenerationRoutesConfig): Hono<{ V
           logger.info({ userId: authCtx.userId, messageCount: body.messages.length }, "Multi-turn generation request");
           return streamGenerationEvents(
             c,
-            generationService.generateStreamWithHistory(body.messages, userToken, c.req.raw.signal),
+            generationService.generateStreamWithHistory(body.messages, c.req.raw.signal),
             keepAliveIntervalMs,
           );
         }
@@ -170,7 +166,7 @@ export function createGenerationRoutes(config: GenerationRoutesConfig): Hono<{ V
 
       return streamGenerationEvents(
         c,
-        generationService.generateStream(query, userToken, signal),
+        generationService.generateStream(query, signal),
         keepAliveIntervalMs,
       );
     },

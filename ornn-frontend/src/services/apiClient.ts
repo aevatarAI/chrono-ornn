@@ -102,6 +102,14 @@ function createHeaders(includeAuth: boolean = true): HeadersInit {
     }
   }
 
+  const user = useAuthStore.getState().user;
+  if (user?.email) {
+    headers["X-User-Email"] = user.email;
+  }
+  if (user?.displayName) {
+    headers["X-User-Display-Name"] = user.displayName;
+  }
+
   return headers;
 }
 
