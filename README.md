@@ -1,0 +1,38 @@
+<p align="center">
+  <img src="ornn-frontend/public/ornn.png" width="180" />
+</p>
+
+<h1 align="center">Ornn</h1>
+
+<p align="center">The skill platform for AI agents</p>
+
+---
+
+Ornn is an AI skill platform where users create, publish, discover, and execute AI skills — packaged prompts and scripts that any agent can use. The ultimate vision is **Skill-as-a-Service**: plug-and-play skill integration for any AI agent.
+
+## What is Ornn
+
+A **skill** is a packaged AI capability — a combination of prompts, scripts, and metadata that an AI agent can discover and execute. Skills are versioned, validated, and stored in the Ornn skill library.
+
+The skill library provides multiple discovery methods:
+
+- **Semantic search** — find skills by meaning, not just keywords
+- **Keyword search** — traditional text-based search
+- **Category browsing** — explore skills by type (plain, tool-based, runtime-based, mixed)
+
+The **sandbox playground** lets users test any skill interactively. When a skill involves code execution, the playground integrates with chrono-sandbox to run scripts in an isolated environment with Node.js and Python runtimes, dependency management, and file artifact retrieval.
+
+## Target Users
+
+| Audience | Use Case |
+|----------|----------|
+| **Web Users** | Browse, create, and test skills via the web UI |
+| **AI Agent Developers** | Integrate skill discovery and execution into agents via the Ornn API or MCP tools |
+
+## Documentation
+
+Full documentation is available at [ornn.chrono-ai.fun/docs](https://ornn.chrono-ai.fun/docs).
+
+## License
+
+[MIT](LICENSE)
