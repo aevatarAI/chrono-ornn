@@ -13,6 +13,9 @@ export function LandingFooter() {
         <p className="font-body text-sm text-text-muted">
           {year} Ornn. All rights reserved.
         </p>
+        <p className="font-body text-xs text-text-muted/50 mt-1">
+          v{__APP_VERSION__}
+        </p>
       </div>
     </footer>
   );

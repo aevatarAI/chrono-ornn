@@ -1,5 +1,8 @@
 /// <reference types="vite/client" />
 
+/** Injected at build time by Vite from root package.json version. */
+declare const __APP_VERSION__: string;
+
 interface ImportMetaEnv {
   /** Base URL for the ornn-skill API backend. */
   readonly VITE_API_BASE_URL: string;
