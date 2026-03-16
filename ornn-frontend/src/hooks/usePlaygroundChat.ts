@@ -7,10 +7,28 @@
 import { useCallback, useRef, useEffect } from "react";
 import { usePlaygroundStore } from "@/stores/playgroundStore";
 import { streamChat, type StreamHandle } from "@/services/playgroundStreamApi";
-import type { PlaygroundChatEvent } from "@/types/playground";
+import type { PlaygroundChatEvent, FileOutput } from "@/types/playground";
 
 /** Minimum interval (ms) between text-delta flushes to avoid re-render storms. */
 const TOKEN_FLUSH_INTERVAL_MS = 50;
+
+/** Trigger a browser file download from a base64-encoded FileOutput. */
+function triggerFileDownload(file: FileOutput) {
+  const byteString = atob(file.content);
+  const bytes = new Uint8Array(byteString.length);
+  for (let i = 0; i < byteString.length; i++) {
+    bytes[i] = byteString.charCodeAt(i);
+  }
+  const blob = new Blob([bytes], { type: file.mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = file.path.split("/").pop() ?? "download";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 export function usePlaygroundChat() {
   const store = usePlaygroundStore();
@@ -71,6 +89,7 @@ export function usePlaygroundChat() {
 
         case "file-output":
           s.addFileOutput(event.file);
+          triggerFileDownload(event.file);
           break;
 
         case "error":

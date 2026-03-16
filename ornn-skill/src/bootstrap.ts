@@ -92,7 +92,7 @@ export async function bootstrap(config: SkillConfig): Promise<BootstrapResult> {
     if (saTokenCache && saTokenCache.expiresAt > now + 60_000) {
       return saTokenCache.accessToken;
     }
-    logger.info("Acquiring SA access token for storage proxy");
+    logger.info("Acquiring SA access token for proxy-authenticated services");
     const body = new URLSearchParams({
       grant_type: "client_credentials",
       client_id: config.nyxidClientId,
@@ -122,7 +122,11 @@ export async function bootstrap(config: SkillConfig): Promise<BootstrapResult> {
     config.storageServiceUrl,
     needsProxyAuth ? getSaAccessToken : undefined,
   );
-  const sandboxClient = new SandboxClient(config.sandboxServiceUrl);
+  const needsSandboxProxyAuth = config.sandboxServiceUrl.includes("proxy");
+  const sandboxClient = new SandboxClient(
+    config.sandboxServiceUrl,
+    needsSandboxProxyAuth ? getSaAccessToken : undefined,
+  );
   const nyxLlmClient = new NyxLlmClient({
     gatewayUrl: config.nyxLlmGatewayUrl,
     tokenUrl: config.nyxidTokenUrl,

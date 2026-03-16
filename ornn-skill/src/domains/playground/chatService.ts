@@ -119,6 +119,18 @@ const PLAYGROUND_TOOLS: ResponsesApiTool[] = [
           items: { type: "string" },
           description: "Glob patterns for files to retrieve (only when output_type='file')",
         },
+        input_files: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              path: { type: "string", description: "Target path relative to /workspace" },
+              content: { type: "string", description: "Base64-encoded file content" },
+            },
+            required: ["path", "content"],
+          },
+          description: "Files to inject into the sandbox before execution",
+        },
         timeout_secs: {
           type: "number",
           description: "Execution timeout in seconds (1-600, default 60)",
@@ -300,16 +312,17 @@ export class PlaygroundChatService {
           env: (args.env as Record<string, string>) ?? {},
           dependencies: (args.dependencies as string[]) ?? [],
           retrieveFiles: (args.retrieve_files as string[]) ?? [],
+          inputFiles: (args.input_files as Array<{ path: string; content: string }>) ?? [],
           timeoutSecs: (args.timeout_secs as number) ?? 120,
         });
 
         // Extract retrieved files
         const files = (result.output?.files ?? [])
-          .filter((f) => f.content && !f.error)
+          .filter((f): f is typeof f & { content: string } => !!f.content && !f.error)
           .map((f) => ({
             path: f.path,
-            content: f.content, // base64
-            size: f.size,
+            content: f.content,
+            size: f.size ?? 0,
             mimeType: guessMimeType(f.path),
           }));
 

@@ -6,7 +6,7 @@
 
 import { parseSseChunk } from "@/utils/sseParser";
 import { useAuthStore } from "@/stores/authStore";
-import type { PlaygroundChatEvent } from "@/types/playground";
+import { PLAYGROUND_EVENT_TYPES, type PlaygroundChatEvent } from "@/types/playground";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 
@@ -33,9 +33,7 @@ function isPlaygroundEvent(event: unknown): event is PlaygroundChatEvent {
   const e = event as Record<string, unknown>;
   return (
     typeof e.type === "string" &&
-    ["text-delta", "tool-call", "tool-result", "error", "finish"].includes(
-      e.type as string,
-    )
+    PLAYGROUND_EVENT_TYPES.has(e.type as string)
   );
 }
 
