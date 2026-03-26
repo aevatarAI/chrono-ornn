@@ -442,8 +442,9 @@ function CopyButton({ text }: { text: string }) {
 function CodeBlock({
   className,
   children,
+  node,
   ...props
-}: React.HTMLAttributes<HTMLElement> & { children?: React.ReactNode }) {
+}: React.HTMLAttributes<HTMLElement> & { children?: React.ReactNode; node?: { position?: unknown; tagName?: string; parent?: { tagName?: string } } }) {
   const match = /language-(\w+)/.exec(className ?? "");
   const lang = match?.[1];
   const code = String(children).replace(/\n$/, "");
@@ -452,8 +453,10 @@ function CodeBlock({
     return <MermaidBlock chart={code} />;
   }
 
-  // Fenced code block (has language class) — wrap with copy button
-  if (lang) {
+  // Fenced code block: has language class OR contains newlines (multi-line = fenced)
+  const isFenced = !!lang || code.includes("\n");
+
+  if (isFenced) {
     return (
       <div className="relative group">
         <CopyButton text={code} />
