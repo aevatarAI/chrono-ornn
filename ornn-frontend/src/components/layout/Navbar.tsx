@@ -31,6 +31,27 @@ function LogoutIcon({ className }: { className?: string }) {
   );
 }
 
+/** NyxID icon (shield/key) */
+function NyxIdIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+    </svg>
+  );
+}
+
+/** Derive NyxID home URL from the authorize URL env var */
+function getNyxIdUrl(): string {
+  try {
+    const authorizeUrl = import.meta.env.VITE_NYXID_AUTHORIZE_URL ?? "";
+    if (authorizeUrl) {
+      const url = new URL(authorizeUrl);
+      return url.origin;
+    }
+  } catch { /* ignore */ }
+  return "https://nyx.chrono-ai.fun";
+}
+
 /** Menu icon (hamburger) */
 function MenuIcon({ className }: { className?: string }) {
   return (
@@ -401,6 +422,15 @@ export function Navbar({ className = "" }: NavbarProps) {
                             {t("nav.adminPanel")}
                           </Link>
                         )}
+                        <a
+                          href={getNyxIdUrl()}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 px-4 py-2.5 font-body text-sm text-text-primary transition-colors hover:bg-neon-cyan/5"
+                        >
+                          <NyxIdIcon className="h-4 w-4 text-text-muted" />
+                          {t("nav.goToNyxId")}
+                        </a>
                       </div>
 
                       {/* Logout */}
@@ -549,6 +579,16 @@ export function Navbar({ className = "" }: NavbarProps) {
                         <span className="font-body text-sm font-medium">{t("nav.adminPanel")}</span>
                       </Link>
                     )}
+
+                    <a
+                      href={getNyxIdUrl()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 px-4 py-3 rounded-lg text-text-muted hover:bg-bg-elevated hover:text-text-primary transition-colors"
+                    >
+                      <NyxIdIcon className="h-5 w-5" />
+                      <span className="font-body text-sm font-medium">{t("nav.goToNyxId")}</span>
+                    </a>
 
                     <button
                       type="button"
