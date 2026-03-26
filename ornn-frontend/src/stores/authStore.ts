@@ -247,15 +247,15 @@ export const useAuthStore = create<AuthState>()(
             throw new Error("Failed to decode refreshed access token");
           }
 
-          // Preserve profile info from initial login; only update RBAC from refreshed access token
+          // Preserve profile info from initial login; keep existing roles/permissions if refreshed token lacks them
           const existingUser = get().user;
           const user: AuthUser = {
             id: accessClaims.sub,
             email: existingUser?.email ?? "",
             displayName: existingUser?.displayName ?? accessClaims.sub,
             avatarUrl: existingUser?.avatarUrl ?? "",
-            roles: accessClaims.roles ?? [],
-            permissions: accessClaims.permissions ?? [],
+            roles: accessClaims.roles?.length ? accessClaims.roles : (existingUser?.roles ?? []),
+            permissions: accessClaims.permissions?.length ? accessClaims.permissions : (existingUser?.permissions ?? []),
           };
           const expiresAt = accessClaims.exp * 1000;
 
