@@ -135,13 +135,19 @@ const APP_VERSION = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "
 function AnnouncementBanner() {
   const { t } = useTranslation();
   const text = `${t("landing.bannerNew")}  Ornn v${APP_VERSION} — ${t("landing.bannerSkills")}`;
+  const spacer = <span className="inline-block w-48" />;
 
   return (
     <div className="shrink-0 relative z-10 overflow-hidden border-b border-neon-cyan/15 bg-neon-cyan/5">
-      <div className="flex whitespace-nowrap" style={{ animation: "marquee 40s linear infinite" }}>
+      <div className="flex whitespace-nowrap" style={{ animation: "marquee 45s linear infinite" }}>
         {[0, 1].map((g) => (
-          <span key={g} className="inline-flex items-center py-1.5 shrink-0" style={{ paddingRight: "min(50vw, 600px)" }}>
-            <span className="font-mono text-xs text-neon-cyan/80">{text}</span>
+          <span key={g} className="inline-flex items-center py-1.5 shrink-0">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <span key={i} className="inline-flex items-center">
+                <span className="font-mono text-xs text-neon-cyan/80">{text}</span>
+                {spacer}
+              </span>
+            ))}
           </span>
         ))}
       </div>
