@@ -43,22 +43,7 @@ graph TD
 
 ---
 
-## Released Versions
-
-### v0.1.3 — Core Skills & Multi-Platform Support (Current)
-
-- Ornn Core Skills: `/ornn-search-and-run`, `/ornn-build`, `/ornn-upload`
-- One-prompt installation for Claude Code, OpenAI Codex, Cursor, and Antigravity
-- Rewritten documentation with real-world examples
-- Go to NyxID quick link in profile menu
-
-### v0.1.0 — First Alpha
-
-- NyxID login with OAuth and API key support
-- Three skill creation modes: Guided, Free Upload, AI Generative
-- Skill Playground with sandbox execution
-- Keyword and semantic search
-- Admin dashboard, i18n, dark/light themes
+<!-- RELEASES -->
 
 ---
 

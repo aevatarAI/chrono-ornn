@@ -96,6 +96,116 @@ function extractToc(md: string): TocItem[] {
   return items;
 }
 
+/* ──────────────── Release Accordion ──────────────── */
+
+interface ReleaseInfo {
+  version: string;
+  date: string;
+  title: string;
+}
+
+function ReleaseAccordion({ lang }: { lang: Lang }) {
+  const [releases, setReleases] = useState<ReleaseInfo[]>([]);
+  const [expandedVersion, setExpandedVersion] = useState<string | null>(null);
+  const [releaseContent, setReleaseContent] = useState<Record<string, string>>({});
+  const [loadingContent, setLoadingContent] = useState<string | null>(null);
+  const { t } = useTranslation();
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/web/docs/releases?lang=${lang}`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.data) setReleases(json.data);
+      })
+      .catch((err) => console.error("[ReleaseAccordion] Failed to load releases:", err));
+  }, [lang]);
+
+  const handleToggle = async (version: string) => {
+    if (expandedVersion === version) {
+      setExpandedVersion(null);
+      return;
+    }
+    setExpandedVersion(version);
+
+    if (!releaseContent[version]) {
+      setLoadingContent(version);
+      try {
+        const resp = await fetch(`${API_BASE}/api/web/docs/releases/${version}?lang=${lang}`);
+        const json = await resp.json();
+        if (json.data?.content) {
+          setReleaseContent((prev) => ({ ...prev, [version]: json.data.content }));
+        }
+      } catch (err) {
+        console.error("[ReleaseAccordion] Failed to load release:", err);
+      } finally {
+        setLoadingContent(null);
+      }
+    }
+  };
+
+  if (releases.length === 0) return null;
+
+  return (
+    <div className="my-8">
+      <h2 id={slugify(lang === "zh" ? "已发布版本" : "released-versions")} className="font-heading text-2xl font-bold text-neon-cyan mb-4">
+        {lang === "zh" ? "已发布版本" : "Released Versions"}
+      </h2>
+      <div className="space-y-2">
+        {releases.map((release, idx) => {
+          const isOpen = expandedVersion === release.version;
+          const isLatest = idx === 0;
+          return (
+            <div
+              key={release.version}
+              className="rounded-lg border border-neon-cyan/20 overflow-hidden transition-colors hover:border-neon-cyan/40"
+            >
+              <button
+                type="button"
+                onClick={() => handleToggle(release.version)}
+                className="flex w-full items-center gap-3 px-5 py-4 text-left cursor-pointer transition-colors hover:bg-neon-cyan/5"
+              >
+                <ChevronIcon open={isOpen} className="h-4 w-4 text-text-muted shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <span className="font-heading text-base font-semibold text-text-primary">
+                    v{release.version}
+                  </span>
+                  <span className="font-body text-sm text-text-muted ml-2">
+                    — {release.title}
+                  </span>
+                  {isLatest && (
+                    <span className="ml-2 inline-block px-2 py-0.5 rounded text-xs font-heading bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/30">
+                      {lang === "zh" ? "当前版本" : "Current"}
+                    </span>
+                  )}
+                </div>
+                <span className="font-mono text-xs text-text-muted shrink-0">{release.date}</span>
+              </button>
+              {isOpen && (
+                <div className="px-5 pb-4 border-t border-neon-cyan/10">
+                  {loadingContent === release.version ? (
+                    <div className="py-4 space-y-2 animate-pulse">
+                      <div className="h-4 w-3/4 rounded bg-bg-elevated" />
+                      <div className="h-4 w-1/2 rounded bg-bg-elevated" />
+                    </div>
+                  ) : releaseContent[release.version] ? (
+                    <div className="markdown-body pt-3">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
+                        {releaseContent[release.version]}
+                      </ReactMarkdown>
+                    </div>
+                  ) : (
+                    <p className="py-4 text-text-muted text-sm">{t("docs.loadFailed")}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /* ──────────────── Mermaid theme configs ──────────────── */
 
 const MERMAID_DARK = {
@@ -619,6 +729,32 @@ export function DocsPage() {
                 <div className="h-4 w-3/4 rounded bg-bg-elevated" />
                 <div className="h-4 w-5/6 rounded bg-bg-elevated" />
               </div>
+            ) : markdown.includes("<!-- RELEASES -->") ? (
+              /* Version Roadmap page: split at placeholder and inject accordion */
+              <article className="markdown-body max-w-4xl mx-auto">
+                {(() => {
+                  const [before, after] = markdown.split("<!-- RELEASES -->");
+                  return (
+                    <>
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        rehypePlugins={[rehypeHighlight]}
+                        components={{ code: CodeBlock as never, ...headingComponents }}
+                      >
+                        {before}
+                      </ReactMarkdown>
+                      <ReleaseAccordion lang={lang} />
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        rehypePlugins={[rehypeHighlight]}
+                        components={{ code: CodeBlock as never, ...headingComponents }}
+                      >
+                        {after}
+                      </ReactMarkdown>
+                    </>
+                  );
+                })()}
+              </article>
             ) : (
               <article className="markdown-body max-w-4xl mx-auto">
                 <ReactMarkdown

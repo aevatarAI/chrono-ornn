@@ -43,22 +43,7 @@ graph TD
 
 ---
 
-## 已发布版本
-
-### v0.1.3 — 核心技能与多平台支持（当前版本）
-
-- Ornn 核心技能：`/ornn-search-and-run`、`/ornn-build`、`/ornn-upload`
-- 一键提示词安装，支持 Claude Code、OpenAI Codex、Cursor 和 Antigravity
-- 重写文档，包含真实使用示例
-- 个人菜单新增「前往 NyxID」快捷入口
-
-### v0.1.0 — 首个 Alpha 版本
-
-- NyxID 登录，支持 OAuth 和 API Key
-- 三种技能创建模式：引导式、自由上传、AI 生成
-- 技能试验场与沙箱执行
-- 关键词与语义搜索
-- 管理员面板、中英双语、深色/浅色主题
+<!-- RELEASES -->
 
 ---
 
