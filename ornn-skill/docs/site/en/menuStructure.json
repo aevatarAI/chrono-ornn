@@ -38,7 +38,8 @@
         { "id": "integration-overview", "label": "Ornn Integration Overview", "file": "integration-overview.md", "order": 2 },
         { "id": "chrono-storage", "label": "chrono-storage", "file": "chrono-storage.md", "order": 3 },
         { "id": "chrono-sandbox", "label": "chrono-sandbox", "file": "chrono-sandbox.md", "order": 4 },
-        { "id": "nyxid", "label": "NyxID", "file": "nyxid.md", "order": 5 }
+        { "id": "nyxid", "label": "NyxID", "file": "nyxid.md", "order": 5 },
+        { "id": "nyxid-mcp-integration", "label": "NyxID MCP Integration", "file": "nyxid-mcp-integration.md", "order": 6 }
       ]
     }
   ]
