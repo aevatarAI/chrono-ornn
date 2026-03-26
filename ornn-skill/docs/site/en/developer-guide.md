@@ -162,6 +162,146 @@ NyxID can auto-generate an MCP server that exposes ornn's API as MCP tools. This
 
 To set this up, configure the NyxID-generated MCP server in your agent's MCP config and provide your NyxID API key.
 
+## Ornn Core Skills
+
+Ornn provides three **core skills** that teach AI agents how to interact with the platform. They live in the [`ornn-core-skills/`](https://github.com/aevatarAI/chrono-ornn/tree/main/ornn-core-skills) directory of the chrono-ornn repository.
+
+### Installation
+
+Pick the prompt for your agent platform, copy it, and paste it into your agent. It will fetch the skills from GitHub and set them up automatically.
+
+> **Prerequisite:** Your agent must be connected to a **NyxID MCP server** to use these skills. NyxID provides the meta tools (`nyx__discover_services`, `nyx__connect_service`, `nyx__call_tool`) that the skills use to interact with Ornn.
+
+#### Claude Code
+
+Skills are stored in `.claude/skills/` and available as slash commands (`/ornn-search-and-run`, etc.).
+
+```
+Fetch the three Ornn core skill directories from https://github.com/aevatarAI/chrono-ornn/tree/main/ornn-core-skills — each directory (ornn-search-and-run, ornn-upload, ornn-build) contains a SKILL.md file. Download each SKILL.md and create the corresponding skill folder in my project's .claude/skills/ directory. The final structure should be:
+
+.claude/skills/ornn-search-and-run/SKILL.md
+.claude/skills/ornn-upload/SKILL.md
+.claude/skills/ornn-build/SKILL.md
+```
+
+#### OpenAI Codex
+
+Skills are stored as agent instructions in the `AGENTS.md` file or as separate files in a `codex/` directory.
+
+```
+Fetch the three Ornn core skill files from https://github.com/aevatarAI/chrono-ornn/tree/main/ornn-core-skills — each directory (ornn-search-and-run, ornn-upload, ornn-build) contains a SKILL.md file. Download each SKILL.md and save them into my project's codex/skills/ directory. The final structure should be:
+
+codex/skills/ornn-search-and-run/SKILL.md
+codex/skills/ornn-upload/SKILL.md
+codex/skills/ornn-build/SKILL.md
+
+Then add a reference to these skills in my AGENTS.md file (create it if it doesn't exist) so that Codex can discover and invoke them.
+```
+
+#### Cursor
+
+Skills are stored as rule files in `.cursor/rules/`.
+
+```
+Fetch the three Ornn core skill files from https://github.com/aevatarAI/chrono-ornn/tree/main/ornn-core-skills — each directory (ornn-search-and-run, ornn-upload, ornn-build) contains a SKILL.md file. Download each SKILL.md and save them as rule files in my project's .cursor/rules/ directory. The final structure should be:
+
+.cursor/rules/ornn-search-and-run.md
+.cursor/rules/ornn-upload.md
+.cursor/rules/ornn-build.md
+```
+
+#### Antigravity
+
+Skills are stored in `.antigravity/skills/`.
+
+```
+Fetch the three Ornn core skill directories from https://github.com/aevatarAI/chrono-ornn/tree/main/ornn-core-skills — each directory (ornn-search-and-run, ornn-upload, ornn-build) contains a SKILL.md file. Download each SKILL.md and create the corresponding skill folder in my project's .antigravity/skills/ directory. The final structure should be:
+
+.antigravity/skills/ornn-search-and-run/SKILL.md
+.antigravity/skills/ornn-upload/SKILL.md
+.antigravity/skills/ornn-build/SKILL.md
+```
+
+### Skill Reference
+
+#### `/ornn-search-and-run` — Discover and Execute Skills
+
+Search the Ornn skill library, pull a skill's content, and execute it — all in one command.
+
+The skill guides your agent through: service discovery → Ornn connection → skill search (keyword or semantic) → pull skill JSON → read `SKILL.md` instructions → execute.
+
+**Examples:**
+
+```
+/ornn-search-and-run Find a Korean translation skill and translate: Hello, I am a robot
+
+/ornn-search-and-run Search for an image generation skill and generate a logo for my startup
+
+/ornn-search-and-run Find a skill that can summarize web pages, then summarize https://example.com
+```
+
+**Example session output:**
+
+| Step | What the agent does |
+|------|-------------------|
+| Search | Calls `ornn__searchskills` with `mode: "semantic"` → finds `any-language-to-korean-translation` |
+| Pull | Calls `ornn__getskilljson` → receives `SKILL.md` with translation instructions |
+| Execute | Follows the `plain` skill instructions → outputs the Korean translation |
+
+#### `/ornn-build` — Generate New Skills with AI
+
+Describe what you want in natural language, and Ornn's AI generates a complete skill package (`SKILL.md` + scripts if needed).
+
+**Examples:**
+
+```
+/ornn-build Create a plain skill that detects sensitive information (API keys, passwords, PII) in text
+
+/ornn-build Build a Node.js skill that converts CSV files to JSON using the csv-parse library
+
+/ornn-build Generate a skill that reviews pull request descriptions for completeness
+```
+
+**How it works:**
+
+1. Your agent calls `ornn__generateskill` with your description
+2. Ornn streams back the generated skill (SSE: `generation_start` → `token` → `generation_complete`)
+3. The agent reconstructs the skill content from the stream
+4. You review the output and optionally upload it with `/ornn-upload`
+
+Supports **multi-turn refinement** — if the first generation isn't quite right, the agent can call `ornn__generateskill` again with the conversation history to iterate.
+
+#### `/ornn-upload` — Package and Upload Skills
+
+Package a skill directory into a ZIP and upload it to the Ornn registry.
+
+**Examples:**
+
+```
+/ornn-upload Upload the skill we just generated
+
+/ornn-upload Package and upload my-custom-skill/ to Ornn
+```
+
+**Key details:**
+
+- ZIP must contain a **root folder** with the skill name (e.g., `my-skill/SKILL.md`), not flat files
+- The `body` parameter is the base64-encoded ZIP, sent via `ornn__uploadskill`
+- If a skill with the same name exists, it creates a new version
+- Validation checks `SKILL.md` frontmatter unless `skip_validation: true`
+
+### Workflow Overview
+
+The three skills cover the complete Ornn lifecycle:
+
+```mermaid
+graph LR
+    A["/ornn-search-and-run"] -->|discover & execute| B["Ornn Skill Library"]
+    C["/ornn-build"] -->|AI-generate| D["New Skill"]
+    D -->|package & upload| E["/ornn-upload"]
+    E --> B
+```
+
 ## Skill Package Format Reference
 
 ```

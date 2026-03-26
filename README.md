@@ -29,6 +29,33 @@ The **sandbox playground** lets users test any skill interactively. When a skill
 | **Web Users** | Browse, create, and test skills via the web UI |
 | **AI Agent Developers** | Integrate skill discovery and execution into agents via the Ornn API or MCP tools |
 
+## Ornn Core Skills
+
+Ornn ships with three **core skills** that teach AI agents how to interact with the platform. They live in the [`ornn-core-skills/`](ornn-core-skills/) directory:
+
+| Skill | Description |
+|-------|-------------|
+| `ornn-search-and-run` | Discover, pull, and execute skills from the Ornn library |
+| `ornn-upload` | Package and upload skills to the Ornn registry |
+| `ornn-build` | Generate new skills via AI from natural language descriptions |
+
+### Installing Core Skills
+
+Copy the installation prompt for your agent platform and paste it into your agent. It will fetch the skills from GitHub and set them up automatically.
+
+| Platform | Skills directory | Prompt |
+|----------|-----------------|--------|
+| **Claude Code** | `.claude/skills/` | [See installation prompt](#claude-code) |
+| **OpenAI Codex** | `codex/skills/` + `AGENTS.md` | [See installation prompt](#openai-codex) |
+| **Cursor** | `.cursor/rules/` | [See installation prompt](#cursor) |
+| **Antigravity** | `.antigravity/skills/` | [See installation prompt](#antigravity) |
+
+See the [Developer Guide](https://ornn.chrono-ai.fun/docs) for platform-specific installation prompts and detailed usage examples.
+
+### Prerequisites
+
+Core skills require a **NyxID MCP server** connection. Add the NyxID MCP server to your agent's MCP configuration to enable Ornn tool access.
+
 ## Documentation
 
 Full documentation is available at [ornn.chrono-ai.fun/docs](https://ornn.chrono-ai.fun/docs).
