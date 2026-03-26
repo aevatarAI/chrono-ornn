@@ -7,8 +7,7 @@
       "order": 1,
       "children": [
         { "id": "what-is-ornn", "label": "What is Ornn", "file": "what-is-ornn.md", "order": 1 },
-        { "id": "releases", "label": "Ornn Releases", "file": "releases.md", "order": 2 },
-        { "id": "roadmap", "label": "Ornn Roadmap", "file": "roadmap.md", "order": 3 }
+        { "id": "version-roadmap", "label": "Version Roadmap", "file": "version-roadmap.md", "order": 2 }
       ]
     },
     {

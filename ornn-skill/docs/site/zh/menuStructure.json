@@ -7,8 +7,7 @@
       "order": 1,
       "children": [
         { "id": "what-is-ornn", "label": "什么是 Ornn", "file": "what-is-ornn.md", "order": 1 },
-        { "id": "releases", "label": "Ornn 版本发布", "file": "releases.md", "order": 2 },
-        { "id": "roadmap", "label": "Ornn 路线图", "file": "roadmap.md", "order": 3 }
+        { "id": "version-roadmap", "label": "版本路线图", "file": "version-roadmap.md", "order": 2 }
       ]
     },
     {
